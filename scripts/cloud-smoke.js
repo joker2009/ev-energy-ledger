@@ -80,6 +80,10 @@ async function main() {
     assertOk(await callCloud(miniProgram, 'setup'), '初始化云环境')
     console.log('PASS 云函数 setup：集合与默认车辆就绪')
 
+    const aiMissing = await callCloud(miniProgram, 'recognizeChargeOrder', {})
+    assert.strictEqual(aiMissing.code, 400, '订单识别缺少图片时应返回 400')
+    console.log('PASS 订单识别参数校验')
+
     await cleanupTestRecords(miniProgram)
 
     // ---------- 计算口径：两条 2000 年的隔离记录 ----------

@@ -18,6 +18,13 @@ const CHARGE_TYPE_OPTIONS = [
   { label: '未充电', value: 'none' }
 ]
 
+const CHARGE_TYPE_LABELS = {
+  home: '家充',
+  fast: '快充',
+  swap: '换电',
+  none: '未充电'
+}
+
 const pad = (n) => (n < 10 ? `0${n}` : `${n}`)
 
 const formatDate = (date) =>
@@ -57,7 +64,9 @@ Page({
     submitting: false,
     isEditing: false,
     loading: false,
-    recognizing: false
+    recognizing: false,
+    orderImage: '',
+    recognizedSummary: []
   },
 
   onLoad(options) {
@@ -177,7 +186,7 @@ Page({
     this.refreshHasAnyInput()
   },
 
-  async onRecognizeMileage() {
+  async onRecognizeOrder() {
     if (this.data.recognizing) return
 
     let media
@@ -203,49 +212,83 @@ Page({
       return
     }
 
-    this.setData({ recognizing: true })
+    this.setData({
+      recognizing: true,
+      orderImage: file.tempFilePath,
+      recognizedSummary: []
+    })
     let fileID = ''
 
     try {
       const upload = await wx.cloud.uploadFile({
-        cloudPath: `ocr/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`,
+        cloudPath: `orders/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`,
         filePath: file.tempFilePath
       })
       fileID = upload.fileID
 
-      const result = await ledger.recognizeMileage({ fileID })
-      const candidates = result.candidates || []
+      const result = await ledger.recognizeChargeOrder({ fileID })
+      const fields = result.fields || {}
+      const patch = {}
 
-      if (!candidates.length) {
-        wx.showToast({ title: '没识别到里程数字，请手动输入', icon: 'none' })
+      if (fields.date) patch['form.date'] = fields.date
+      if (fields.odometer) patch['form.odometer'] = String(fields.odometer)
+      if (fields.chargeKwh) patch['form.chargeKwh'] = String(fields.chargeKwh)
+      if (fields.chargeFee !== undefined) patch['form.chargeFee'] = String(fields.chargeFee)
+      if (fields.socStart !== undefined) patch['form.socStart'] = String(fields.socStart)
+      if (fields.socEnd !== undefined) patch['form.socEnd'] = String(fields.socEnd)
+
+      if (fields.chargeType) {
+        patch['form.chargeType'] = fields.chargeType
+        patch.isCharging = fields.chargeType !== 'none'
+        if (fields.chargeType === 'none') patch['form.chargeKwh'] = ''
+      }
+
+      const note = [fields.station, fields.note].filter(Boolean).join(' | ').slice(0, 100)
+      if (note) patch['form.note'] = note
+
+      const summary = []
+      if (fields.date) {
+        summary.push({
+          label: '日期',
+          value: fields.time ? `${fields.date} ${fields.time}` : fields.date
+        })
+      }
+      if (fields.chargeKwh) {
+        summary.push({ label: '充电量', value: `${fields.chargeKwh} kWh` })
+      }
+      if (fields.chargeFee !== undefined) {
+        summary.push({ label: '金额', value: `¥${Number(fields.chargeFee).toFixed(2)}` })
+      }
+      if (fields.socStart !== undefined) {
+        summary.push({ label: 'SOC', value: `${fields.socStart}% → ${fields.socEnd}%` })
+      }
+      if (fields.chargeType) {
+        summary.push({
+          label: '类型',
+          value: CHARGE_TYPE_LABELS[fields.chargeType] || fields.chargeType
+        })
+      }
+      if (fields.station) summary.push({ label: '站点', value: fields.station })
+      if (fields.note) summary.push({ label: '备注', value: fields.note })
+      if (fields.odometer) {
+        summary.push({ label: '总里程', value: `${fields.odometer} km` })
+      } else if (summary.length > 0) {
+        summary.push({ label: '总里程', value: '未识别，请手动填写' })
+      }
+
+      const count = Object.keys(fields).filter((key) => key !== 'time').length
+      if (!count) {
+        this.setData({ recognizedSummary: summary })
+        wx.showToast({ title: '没识别到有效信息，请手动填写', icon: 'none' })
         return
       }
 
-      let choice = candidates[0]
-      if (candidates.length > 1) {
-        const items = candidates.slice(0, 6)
-        let sheet
-        try {
-          sheet = await wx.showActionSheet({
-            itemList: items.map((item) => `${item.value} km`)
-          })
-        } catch (err) {
-          const message = (err && (err.errMsg || err.message)) || ''
-          if (/cancel/i.test(message)) return
-          throw err
-        }
-        choice = items[sheet.tapIndex] || choice
-      }
-
-      this.setData({
-        'form.odometer': String(choice.value),
-        'errors.odometer': ''
-      })
+      this.setData(Object.assign({ recognizedSummary: summary }, patch))
       this.refreshHasAnyInput()
-      wx.showToast({ title: `已识别 ${choice.value} km`, icon: 'none' })
+      wx.showToast({ title: `已识别 ${count} 项，请核对`, icon: 'none' })
     } catch (err) {
       wx.showToast({
-        title: (err && err.message) || '识别失败，请手动输入',
+        title: (err && err.message) || '识别失败，请手动填写',
         icon: 'none'
       })
     } finally {
@@ -254,6 +297,14 @@ Page({
         wx.cloud.deleteFile({ fileList: [fileID] }).catch(() => {})
       }
     }
+  },
+
+  previewOrderImage() {
+    if (!this.data.orderImage) return
+    wx.previewImage({
+      urls: [this.data.orderImage],
+      current: this.data.orderImage
+    })
   },
 
   refreshHasAnyInput() {

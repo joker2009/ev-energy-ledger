@@ -1,6 +1,40 @@
 <view class="page add-page">
   <view class="state" wx:if="{{loading}}">加载中…</view>
   <block wx:else>
+  <view class="scan-card" bindtap="onRecognizeOrder">
+    <view class="scan-icon">📷</view>
+    <view class="scan-body">
+      <view class="scan-title">{{recognizing ? '识别中…' : '识别充电订单截图'}}</view>
+      <view class="scan-desc">自动填写时间、电量、金额、SOC 和站点；里程有就填</view>
+    </view>
+    <text class="scan-arrow">›</text>
+  </view>
+
+  <view class="preview-card" wx:if="{{orderImage}}">
+    <view class="preview-head">
+      <text class="preview-title">识别结果</text>
+      <text class="preview-link" bindtap="previewOrderImage">查看原图 ›</text>
+    </view>
+    <view class="preview-body">
+      <image
+        class="preview-thumb"
+        src="{{orderImage}}"
+        mode="aspectFill"
+        bindtap="previewOrderImage"
+      />
+      <view class="preview-fields">
+        <view class="preview-field" wx:for="{{recognizedSummary}}" wx:key="label">
+          <text class="preview-label">{{item.label}}</text>
+          <text class="preview-value">{{item.value}}</text>
+        </view>
+        <view class="preview-empty" wx:if="{{!recognizedSummary.length}}">
+          未识别到字段，请手动填写
+        </view>
+      </view>
+    </view>
+    <text class="preview-tip">请对照原图核对表单；识别内容不会自动保存</text>
+  </view>
+
   <view class="form-card">
     <view class="form-row" id="field-date" bindtap="openDatePicker">
       <text class="row-label">日期</text>
@@ -36,11 +70,6 @@
         tips="{{errors.odometer}}"
         bindchange="onFieldInput"
       />
-      <view class="recognize-row">
-        <text class="recognize-link" bindtap="onRecognizeMileage">
-          {{recognizing ? '识别中…' : '📷 拍照识别里程'}}
-        </text>
-      </view>
     </view>
 
     <view class="form-block" id="field-chargeType">

@@ -1,7 +1,13 @@
 const cloud = require('wx-server-sdk')
 const crypto = require('crypto')
+const https = require('https')
 const XLSX = require('xlsx')
-const { extractMileageCandidates } = require('./lib/ocr')
+const {
+  ORDER_PROMPT,
+  parseJsonObject,
+  normalizeOrderFields,
+  detectImageMime
+} = require('./lib/order')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -799,57 +805,137 @@ async function deleteImportBatch(openid, payload) {
   return { deleted, importBatch }
 }
 
-async function recognizeMileage(openid, payload) {
-  const params = { type: 'photo' }
-  let temporaryFileID = ''
+function httpsPostJson(url, headers, body, timeout = 45000) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url)
+    const payload = Buffer.from(JSON.stringify(body))
 
+    const req = https.request(
+      {
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port || 443,
+        path: `${target.pathname}${target.search}`,
+        method: 'POST',
+        headers: Object.assign(
+          {
+            'Content-Type': 'application/json',
+            'Content-Length': payload.length
+          },
+          headers
+        ),
+        timeout
+      },
+      (res) => {
+        const chunks = []
+        res.on('data', (chunk) => chunks.push(chunk))
+        res.on('end', () => {
+          const raw = Buffer.concat(chunks).toString('utf8')
+          let json
+          try {
+            json = JSON.parse(raw)
+          } catch (err) {
+            return reject(new Error(`AI 返回无法解析（HTTP ${res.statusCode}）`))
+          }
+
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            const message =
+              (json && json.error && json.error.message) || `HTTP ${res.statusCode}`
+            return reject(new Error(`AI 调用失败：${message}`))
+          }
+
+          resolve(json)
+        })
+      }
+    )
+
+    req.on('timeout', () => req.destroy(new Error('AI 调用超时')))
+    req.on('error', reject)
+    req.write(payload)
+    req.end()
+  })
+}
+
+async function recognizeChargeOrder(openid, payload) {
+  const apiKey = process.env.DEEPSEEK_API_KEY
+  if (!apiKey) {
+    badRequest('AI 识别未配置：请在云函数环境变量设置 DEEPSEEK_API_KEY')
+  }
+
+  let buffer
+  if (payload.imageBase64) {
+    const base64 = String(payload.imageBase64)
+    if (base64.length > 8 * 1024 * 1024) badRequest('图片超过 6MB 限制')
+    buffer = Buffer.from(base64, 'base64')
+  } else if (payload.fileID) {
+    const downloaded = await cloud.downloadFile({ fileID: String(payload.fileID) })
+    buffer = downloaded.fileContent
+  } else {
+    badRequest('缺少图片')
+  }
+
+  if (!buffer || buffer.length === 0) badRequest('图片为空')
+  if (buffer.length > 6 * 1024 * 1024) badRequest('图片超过 6MB 限制')
+
+  const baseUrl = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/+$/, '')
+  const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
+  const mime = detectImageMime(buffer)
+  const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`
+
+  let response
   try {
-    if (payload.imageBase64) {
-      const base64 = String(payload.imageBase64)
-      if (base64.length > 8 * 1024 * 1024) badRequest('图片超过 6MB 限制')
-
-      const upload = await cloud.uploadFile({
-        cloudPath: `ocr/temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`,
-        fileContent: Buffer.from(base64, 'base64')
-      })
-      temporaryFileID = upload.fileID
-
-      const temp = await cloud.getTempFileURL({ fileList: [temporaryFileID] })
-      const file = temp.fileList && temp.fileList[0]
-      if (!file || !file.tempFileURL) badRequest('图片地址获取失败')
-      params.imgUrl = file.tempFileURL
-    } else if (payload.fileID) {
-      const temp = await cloud.getTempFileURL({ fileList: [String(payload.fileID)] })
-      const file = temp.fileList && temp.fileList[0]
-      if (!file || !file.tempFileURL) badRequest('图片地址获取失败')
-      params.imgUrl = file.tempFileURL
-    } else {
-      badRequest('缺少图片')
-    }
-
-    let result
-    try {
-      result = await cloud.openapi.ocr.printedText(params)
-    } catch (err) {
-      const message = String((err && (err.errMsg || err.message)) || '')
-      if (/permission|scope|auth|未授权|权限/i.test(message)) {
-        badRequest('OCR 能力未开通或没有权限，请手动输入里程')
+    response = await httpsPostJson(
+      `${baseUrl}/chat/completions`,
+      { Authorization: `Bearer ${apiKey}` },
+      {
+        model,
+        messages: [
+          { role: 'system', content: ORDER_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: '请提取这张充电订单截图中的字段。' },
+              {
+                type: 'image_url',
+                image_url: { url: dataUrl, detail: 'high' }
+              }
+            ]
+          }
+        ],
+        temperature: 0,
+        max_tokens: 800,
+        stream: false
       }
-      if (/quota|limit|额度/i.test(message)) {
-        badRequest('OCR 今日额度已用完，请手动输入里程')
-      }
-      throw err
+    )
+  } catch (err) {
+    const message = String((err && err.message) || '')
+    if (/401|unauthorized|invalid.*key|authentication/i.test(message)) {
+      badRequest('DeepSeek API Key 无效，请检查云函数环境变量')
     }
+    if (/402|429|quota|balance|rate limit/i.test(message)) {
+      badRequest('DeepSeek 额度不足或请求过多，请稍后再试')
+    }
+    if (/timeout|ETIMEDOUT|ECONNRESET/i.test(message)) {
+      badRequest('AI 识别超时，请重试或手动填写')
+    }
+    throw err
+  }
 
-    const items = result.items || []
-    return {
-      candidates: extractMileageCandidates(items),
-      rawText: items.map((item) => item.text).filter(Boolean).join(' ')
-    }
-  } finally {
-    if (temporaryFileID) {
-      await cloud.deleteFile({ fileList: [temporaryFileID] }).catch(() => {})
-    }
+  const content =
+    response.choices &&
+    response.choices[0] &&
+    response.choices[0].message &&
+    response.choices[0].message.content
+  const text = Array.isArray(content)
+    ? content.map((item) => (item && item.text) || '').join('')
+    : String(content || '')
+  const parsed = parseJsonObject(text)
+  const fields = normalizeOrderFields(parsed, chinaToday())
+
+  return {
+    fields,
+    recognized: Object.keys(fields).length > 0,
+    model
   }
 }
 
@@ -963,8 +1049,8 @@ exports.main = async (event) => {
         return ok(await importRecords(OPENID, payload))
       case 'deleteImportBatch':
         return ok(await deleteImportBatch(OPENID, payload))
-      case 'recognizeMileage':
-        return ok(await recognizeMileage(OPENID, payload))
+      case 'recognizeChargeOrder':
+        return ok(await recognizeChargeOrder(OPENID, payload))
       case 'exportRecords':
         return ok(await exportRecords(OPENID, payload))
       case 'listRecords':

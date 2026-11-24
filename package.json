@@ -4,12 +4,12 @@
   "private": true,
   "description": "新能源电车能耗记录账本 · 微信小程序",
   "scripts": {
-    "test": "node scripts/ocr-parse-test.js",
+    "test": "node scripts/order-parse-test.js",
     "smoke": "node scripts/smoke.js",
     "smoke:cloud": "node scripts/cloud-smoke.js",
     "smoke:import": "node scripts/import-smoke.js",
     "smoke:export": "node scripts/export-smoke.js",
-    "smoke:ocr": "node scripts/ocr-smoke.js",
+    "smoke:ai": "node scripts/ai-order-smoke.js",
     "prune:npm": "node scripts/prune-miniprogram-npm.js"
   },
   "devDependencies": {

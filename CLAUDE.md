@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 微信原生小程序：**新能源电车的能耗记录账本**（记录充电、里程、花费，统计百公里电耗与每公里成本）。
 
-当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、拍照识别）已完成并通过测试**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**OCR 当前受账号额度/权限限制**，调用会降级为手动输入，需在微信后台开通或购买 OCR 额度后才能真正识别。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库还不是 git 仓库。
+当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别）已完成**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**订单识别代码已就绪，需要给云函数配置 `DEEPSEEK_API_KEY` 后用真实截图验证**；未配置时入口会提示并保留手动录入。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库已初始化并关联 GitHub `origin/main`。
 
 ## 目录结构
 
@@ -25,21 +25,21 @@ miniprogram/               # 小程序源码（构建产物不在此目录）
   pages/import/index.*     # Excel 导入：选文件、默认类型、结果与错误行
   pages/export/index.*     # Excel 导出：全部/指定月份、打开保存、发送到聊天
   components/ec-canvas/    # 官方 echarts-for-weixin 组件（含 echarts.js，约 1MB）
-  pages/add/index.*        # 记一笔/编辑：表单、校验、拍照识别、云函数保存
+  pages/add/index.*        # 记一笔/编辑：表单、校验、订单截图识别与预览、云函数保存
   utils/ledger.js          # 云函数调用封装（callFunction + code 判定）
 cloudfunctions/
   ledger/                  # 唯一云函数：action 分发 + 全量口径计算
     index.js
-    lib/ocr.js             # 从 OCR items 提取里程候选（纯函数，可单测）
-    config.json            # openapi 权限：ocr.printedText
+    lib/order.js           # DeepSeek 提示词、JSON 解析、字段归一化（纯函数，可单测）
     package.json           # wx-server-sdk + xlsx
 docs/v1-功能设计.md         # v1 行为与口径的权威说明（含二期与发布清单）
 scripts/smoke.js           # 前端冒烟：编译、tab、表单校验
 scripts/cloud-smoke.js     # 云端冒烟：计算口径、列表、编辑、删除、统计
 scripts/import-smoke.js    # Excel 导入冒烟（默认合成样本，可传真实文件路径）
+scripts/export-smoke.js    # Excel 导出冒烟（全部/指定月份、云端上传下载）
+scripts/ai-order-smoke.js  # 订单识别联调（用合成订单图，需配置 Key）
+scripts/order-parse-test.js # 订单识别 JSON/字段归一化单测
 scripts/lib/fixture.js     # 测试用合成 Excel 生成器，不含真实数据
-scripts/ocr-smoke.js       # OCR 调用冒烟（额度不足时打印 SKIPPED）
-scripts/ocr-parse-test.js  # OCR 候选提取纯函数单测
 scripts/prune-miniprogram-npm.js  # 裁剪 TDesign 未使用组件，控制主包体积
 package.json               # 根目录仅含 devDependencies（自动化 SDK）
 ```
@@ -61,7 +61,7 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
 ## 云开发
 
 - 环境 ID：`cloud1-d3g9916cz3b402499`，在 `miniprogram/app.js` 的 `wx.cloud.init` 中初始化。
-- 只有一个云函数 `ledger`，通过 `event.action` 分发 `setup` / `ensureVehicle` / `addRecord` / `getRecord` / `updateRecord` / `listRecords` / `getStats` / `deleteRecord` / `importRecords` / `deleteImportBatch` / `exportRecords` / `recognizeMileage`。不要拆成多个函数：计算口径必须只有一份。
+- 只有一个云函数 `ledger`，通过 `event.action` 分发 `setup` / `ensureVehicle` / `addRecord` / `getRecord` / `updateRecord` / `listRecords` / `getStats` / `deleteRecord` / `importRecords` / `deleteImportBatch` / `exportRecords` / `recognizeChargeOrder`。不要拆成多个函数：计算口径必须只有一份。
 - 云函数以管理员权限运行，**每个查询都要手动过滤 `_openid`**；集合权限在控制台设为「仅创建者可读写」。
 - `setup` 会创建 `records` / `vehicles` 集合并建默认车，部署后调用一次即可；数据库索引需在控制台手动建（`records`: `_openid + date`，`vehicles`: `_openid`）。集合权限也必须在控制台设为「仅创建者可读写」，创建 API 不会替用户设置权限。
 - 部署：
@@ -71,6 +71,11 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
     --project /Users/rkjiang/mycode/mywxapp --remote-npm-install
   ```
   改动 `cloudfunctions/ledger/index.js` 后必须重新部署，前端冒烟不会覆盖云端代码。
+- 订单识别环境变量（云开发控制台 → 云函数 → `ledger` → 配置 → 环境变量）：
+  - `DEEPSEEK_API_KEY`：必填，**绝不写进代码或提交仓库**
+  - `DEEPSEEK_MODEL`：默认 `deepseek-flash`
+  - `DEEPSEEK_BASE_URL`：默认 `https://api.deepseek.com`
+  - 函数超时设为 **60s**；多模态调用可能超过默认的几秒
 - 查看环境：工具「云开发」控制台，或 `cli cloud env list --project .`。
 
 ## 二期功能（已实现）
@@ -99,12 +104,16 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
 - 返回 `{ fileID, count, fileName }`；`returnBase64` 用于测试。
 - 导入记录额外保存 `importBatch`；`deleteImportBatch` 可按批次删除，测试用它清理，未来也可做「撤销导入」。
 
-### 拍照识别里程
+### 充电订单截图识别（DeepSeek 多模态）
 
-- 记一笔页「📷 拍照识别里程」→ `wx.chooseMedia` → 云存储 → `ledger.recognizeMileage`。
-- 云函数调用 `cloud.openapi.ocr.printedText`（`config.json` 声明权限），从 OCR items 提取 4–7 位数字；带 `km` / `ODO` / `总里程` 上下文的优先，最多返回 6 个候选，多个时用 ActionSheet 让用户选。
-- **额度或权限不足时返回业务错误，页面 toast 并允许手动输入**。当前账号实测返回「OCR 今日额度已用完」，需在微信后台开通或购买额度。
-- 隐私保护指引需补充相机/相册与图片上传云存储的说明。
+- 记一笔页顶部「识别充电订单截图」→ `wx.chooseMedia` → 云存储 → `ledger.recognizeChargeOrder`。
+- 云函数读取 `DEEPSEEK_API_KEY` 环境变量，调用 `https://api.deepseek.com/chat/completions`，模型默认 `deepseek-flash`，图片以 base64 data URL 放在 `user` 消息的 `image_url` 中。
+- 返回严格 JSON：日期/时间、总里程、充电量、金额、SOC、充电类型、站点、备注；`lib/order.js` 负责 JSON 解析与范围归一化。
+- 客户端回填表单，并保留本地截图预览（缩略图 + `wx.previewImage`）和识别字段清单，供人工核对；**不会自动保存**。
+- 截图里没有里程时留空，由用户手动填写。
+- 环境变量：`DEEPSEEK_API_KEY`（必填）、`DEEPSEEK_MODEL`（默认 `deepseek-flash`）、`DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`）；云函数超时建议设为 60s。
+- 截图会发送给 DeepSeek；提示词明确不提取订单号/手机号/账号/支付方式，隐私指引需声明第三方 AI 处理与云存储临时文件。
+- 未配置 Key 或 API 报错时返回业务错误，页面保留手动输入。
 
 ## v1 范围（严格守住）
 
@@ -114,7 +123,7 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
 2. **列表**：月份切换 + 当月明细 + 月汇总（里程、电耗、花费）
 3. **统计**：百公里电耗趋势、每公里成本、家充 vs 快充花费占比
 
-二期已实现历史记录编辑、Excel 导入、拍照识别里程。保养、行程记录、多车管理、分享、自动同步里程仍属 v2，不要提前实现。需求一多，生成代码会互相矛盾。
+二期已实现历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别。保养、行程记录、多车管理、分享、自动同步里程仍属 v2，不要提前实现。需求一多，生成代码会互相矛盾。
 
 ## 数据模型
 
@@ -149,7 +158,7 @@ records: {
 - 新增页面必须同时注册进 `app.json` 的 `pages` 数组。
 - `wx.request` 必须 https 且域名在小程序后台白名单内；**云函数调用不受此限**，所以业务数据一律通过云函数读写。
 - 云数据库权限设为「**仅创建者可读写**」，不要设为所有人可读（涉及车辆与消费数据）。
-- 里程无法自动同步：国内车企不开放个人 API，电车 OBD 也不通。v1 手动录入，二期已加拍照 OCR 识别（`cloud.openapi.ocr.printedText`），额度不足时手动输入。
+- 里程无法自动同步：国内车企不开放个人 API，电车 OBD 也不通。v1 手动录入；二期支持上传充电订单截图，由 DeepSeek 多模态识别并回填电量/金额/SOC/站点，里程仍以表单为准。
 - 个人主体**不能开通微信支付**；ICP 备案是上架硬门槛（1–2 周），不要等到发布才办。
 
 ## 本地开发
@@ -178,12 +187,12 @@ DEVTOOLS="/Applications/wechatwebdevtools.app/Contents/MacOS/cli"
 
 ```bash
 npm install            # 首次，安装根目录的自动化 SDK
-npm test               # OCR 候选提取纯函数单测（不启动工具）
+npm test               # 订单识别 JSON/字段归一化单测（不启动工具）
 npm run smoke          # 前端：编译、tab、表单校验（不需要云环境）
 npm run smoke:cloud    # 云端：计算口径、列表、编辑、删除、统计图表
 npm run smoke:import   # Excel 导入：默认合成样本，可传真实文件路径
 npm run smoke:export   # Excel 导出：全部/指定月份、内容校验、云端上传下载
-npm run smoke:ocr      # OCR：默认读 /tmp/odo.png，额度不足时打印 SKIPPED
+npm run smoke:ai       # 订单识别：合成订单图调用 DeepSeek，未配置 Key 时 SKIPPED
 npm run prune:npm      # build-npm 后裁剪 TDesign 未使用组件（控制主包 <2MB）
 ```
 
@@ -191,7 +200,8 @@ npm run prune:npm      # build-npm 后裁剪 TDesign 未使用组件（控制主
 - `scripts/cloud-smoke.js` 需要 `ledger` 已部署：用 2000-01 的历史记录做隔离，验证本段里程/电耗/成本、月度汇总、统计接口，再走表单提交、列表渲染、编辑、左滑删除、图表初始化，并清理测试数据；生成统计页截图。
 - `scripts/import-smoke.js` 读取合成 xlsx 的 base64 调 `importRecords`，验证 3 条导入、字段映射、3 位小数、原始顺序、重复导入去重、导入后编辑，最后按导入批次清理。传自定义文件：`npm run smoke:import -- /path/to/file.xlsx`（仅本地使用，不要提交真实数据）。
 - `scripts/export-smoke.js` 导入合成样本后用 `exportRecords` 的 `returnBase64` 解析工作簿，校验全部/指定月份的标题、列、精度、时分与文件名，再验证云端上传、下载和清理，最后按批次删除测试数据。
-- `scripts/ocr-smoke.js` 先校验缺少图片返回 400，再用测试图调用 OCR；若账号无额度会明确打印 `OCR SKIPPED`。测试图可用 headless Chrome 生成。
+- `scripts/order-parse-test.js` 验证大模型返回 JSON 的解析、日期/金额/电量/SOC/类型范围归一化；真正的 DeepSeek 调用需要云函数配置 Key 后，用真实订单截图在真机验证。
+- `scripts/ai-order-smoke.js` 读取 `/tmp/charge-order.png`（合成订单图）直接调用 `recognizeChargeOrder`；未配置 `DEEPSEEK_API_KEY` 时打印 `SKIPPED`，配置后校验日期/电量/金额/SOC/里程/类型/站点。
 - 所有 automator 脚本都通过 `miniProgram.evaluate` 访问 `getCurrentPages()` 调用页面方法（`page.callMethod` 在当前基础库不可用）。
 
 ## 协作方式
