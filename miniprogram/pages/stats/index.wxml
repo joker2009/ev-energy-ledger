@@ -1,0 +1,65 @@
+<view class="page">
+  <view class="range-bar">
+    <view class="range-option {{range === 6 ? 'is-active' : ''}}" data-value="6" bindtap="onRangeChange">近6个月</view>
+    <view class="range-option {{range === 0 ? 'is-active' : ''}}" data-value="0" bindtap="onRangeChange">全部</view>
+  </view>
+
+  <view class="metric-card">
+    <view class="metric-item">
+      <text class="metric-value">{{metrics.consumption}}</text>
+      <text class="metric-label">平均电耗</text>
+      <text class="metric-unit">kWh/100km</text>
+    </view>
+    <view class="metric-divider"></view>
+    <view class="metric-item">
+      <text class="metric-value">{{metrics.costPerKm}}</text>
+      <text class="metric-label">每公里成本</text>
+      <text class="metric-unit">元/km</text>
+    </view>
+    <view class="metric-divider"></view>
+    <view class="metric-item">
+      <text class="metric-value">{{metrics.distance}}</text>
+      <text class="metric-label">总里程</text>
+      <text class="metric-unit">km</text>
+    </view>
+  </view>
+
+  <view class="state" wx:if="{{loading}}">加载中…</view>
+
+  <view class="state" wx:elif="{{error}}">
+    <view class="state-title">加载失败</view>
+    <view class="state-desc">{{error}}</view>
+    <button class="primary-btn state-btn" bindtap="load">重试</button>
+  </view>
+
+  <block wx:else>
+    <view class="chart-card" wx:if="{{hasConsumption}}">
+      <view class="chart-title">百公里电耗趋势<text class="chart-unit">kWh/100km</text></view>
+      <view class="chart-body">
+        <ec-canvas id="consumption-chart" canvas-id="consumption-chart" ec="{{ecConsumption}}"></ec-canvas>
+      </view>
+    </view>
+
+    <view class="chart-card" wx:if="{{hasCost}}">
+      <view class="chart-title">每公里成本趋势<text class="chart-unit">元/km</text></view>
+      <view class="chart-body">
+        <ec-canvas id="cost-chart" canvas-id="cost-chart" ec="{{ecCost}}"></ec-canvas>
+      </view>
+    </view>
+
+    <view class="chart-card" wx:if="{{hasTypeFee}}">
+      <view class="chart-title">花费构成<text class="chart-unit">按金额</text></view>
+      <view class="chart-body">
+        <ec-canvas id="type-chart" canvas-id="type-chart" ec="{{ecType}}"></ec-canvas>
+      </view>
+    </view>
+
+    <view class="empty-tip" wx:if="{{!hasChartData}}">
+      <view class="empty-tip-title">再记一笔就能看到能耗趋势</view>
+      <view class="empty-tip-desc">至少需要一条有本段里程的记录</view>
+      <button class="primary-btn empty-tip-btn" bindtap="goAdd">去记一笔</button>
+    </view>
+
+    <view class="footnote">电耗 = 区间充电量 ÷ 区间里程 × 100；首条记录不计入</view>
+  </block>
+</view>

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "导入历史数据",
+  "usingComponents": {
+    "t-radio-group": "tdesign-miniprogram/radio-group/radio-group",
+    "t-button": "tdesign-miniprogram/button/button"
+  }
+}

@@ -1,0 +1,19 @@
+# 依赖
+node_modules/
+
+# 小程序 npm 构建产物（clone 后在 miniprogram/ 下 npm install + build-npm 生成）
+miniprogram/miniprogram_npm/
+
+# 微信开发者工具本地配置（含本机路径、端口等）
+project.private.config.json
+
+# Claude Code 本地设置
+.claude/settings.local.json
+
+# 本地 AI 工具状态
+.ai-tracker/
+
+# 系统与日志
+.DS_Store
+*.log
+npm-debug.log*

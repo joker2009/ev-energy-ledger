@@ -1,0 +1,7 @@
+{
+  "name": "mywxapp-miniprogram",
+  "private": true,
+  "dependencies": {
+    "tdesign-miniprogram": "^1.18.0"
+  }
+}

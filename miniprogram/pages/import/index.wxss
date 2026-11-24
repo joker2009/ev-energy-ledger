@@ -1,0 +1,136 @@
+.intro {
+  margin-bottom: 24rpx;
+}
+
+.intro-title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.intro-text {
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.intro-tip {
+  margin-top: 12rpx;
+  font-size: 23rpx;
+  color: var(--color-primary);
+}
+
+.section {
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 29rpx;
+  font-weight: 600;
+}
+
+.section-desc {
+  margin-top: 6rpx;
+  margin-bottom: 18rpx;
+  font-size: 23rpx;
+  color: var(--color-text-muted);
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding: 24rpx;
+  background: #f9fafb;
+  border: 1rpx dashed var(--color-border);
+  border-radius: 16rpx;
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.file-name {
+  font-size: 26rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--color-text-muted);
+}
+
+.file-action {
+  margin-left: 20rpx;
+  font-size: 25rpx;
+  color: var(--color-primary);
+}
+
+.type-options {
+  --td-spacer-2: 28rpx;
+}
+
+.submit-area {
+  margin-top: 8rpx;
+}
+
+.submit-area t-button {
+  display: block;
+  width: 100%;
+}
+
+.submit-area .t-button {
+  display: flex;
+  width: 100% !important;
+}
+
+.result-card {
+  margin-top: 28rpx;
+}
+
+.result-title {
+  margin-bottom: 12rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10rpx 0;
+  font-size: 25rpx;
+  color: var(--color-text-secondary);
+}
+
+.result-errors {
+  margin-top: 14rpx;
+  padding: 16rpx;
+  background: #fff5f5;
+  border-radius: 12rpx;
+}
+
+.error-item {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #d54941;
+}
+
+.result-actions {
+  margin-top: 24rpx;
+}
+
+.error-card {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  font-size: 24rpx;
+  color: #d54941;
+  background: #fff5f5;
+  border-radius: 16rpx;
+}

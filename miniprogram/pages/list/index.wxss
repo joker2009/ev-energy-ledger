@@ -1,0 +1,259 @@
+.page {
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+}
+
+.month-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 0 24rpx;
+}
+
+.month-nav {
+  width: 72rpx;
+  height: 72rpx;
+  line-height: 66rpx;
+  text-align: center;
+  font-size: 44rpx;
+  color: var(--color-text);
+  border-radius: 50%;
+}
+
+.month-nav.is-disabled {
+  color: #c9cdd4;
+}
+
+.month-label {
+  min-width: 220rpx;
+  padding: 0 16rpx;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.vehicle-name {
+  font-size: 22rpx;
+  color: var(--color-text-muted);
+}
+
+.tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.data-links {
+  display: flex;
+  align-items: center;
+}
+
+.data-link {
+  padding: 6rpx 0;
+  font-size: 24rpx;
+  color: var(--color-primary);
+}
+
+.data-divider {
+  padding: 0 12rpx;
+  font-size: 24rpx;
+  color: var(--color-text-muted);
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  background: var(--color-card);
+  border-radius: 24rpx;
+  padding: 32rpx 16rpx;
+  box-shadow: 0 4rpx 20rpx rgba(31, 35, 41, 0.04);
+}
+
+.summary-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.summary-value {
+  font-size: 40rpx;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-label {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.summary-divider {
+  width: 1rpx;
+  height: 56rpx;
+  background: var(--color-border);
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 120rpx;
+  font-size: 26rpx;
+  color: var(--color-text-secondary);
+}
+
+.state-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.state-desc {
+  margin-top: 12rpx;
+  max-width: 560rpx;
+  text-align: center;
+}
+
+.state-btn {
+  margin-top: 40rpx;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 140rpx;
+}
+
+.empty-icon {
+  width: 128rpx;
+  height: 128rpx;
+  line-height: 128rpx;
+  text-align: center;
+  font-size: 56rpx;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+}
+
+.empty-title {
+  margin-top: 32rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.empty-desc {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: var(--color-text-secondary);
+}
+
+.empty-btn {
+  margin-top: 48rpx;
+}
+
+.date-header {
+  margin: 32rpx 0 14rpx;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.record-card {
+  background: var(--color-card);
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 16rpx;
+}
+
+.record-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.record-left {
+  display: flex;
+  align-items: center;
+}
+
+.type-tag {
+  margin-right: 16rpx;
+  padding: 4rpx 14rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  border-radius: 8rpx;
+}
+
+.type-home {
+  color: #00a870;
+  background: rgba(0, 168, 112, 0.1);
+}
+
+.type-fast {
+  color: #ed7b2f;
+  background: rgba(237, 123, 47, 0.12);
+}
+
+.type-swap {
+  color: #0052d9;
+  background: rgba(0, 82, 217, 0.1);
+}
+
+.type-none {
+  color: var(--color-text-secondary);
+  background: #f2f3f5;
+}
+
+.record-right {
+  display: flex;
+  align-items: center;
+}
+
+.record-arrow {
+  margin-left: 10rpx;
+  font-size: 30rpx;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+
+.record-kwh {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.record-fee {
+  font-size: 30rpx;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.record-sub {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.record-metrics {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: var(--color-text-muted);
+}
+
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: calc(48rpx + env(safe-area-inset-bottom));
+  width: 104rpx;
+  height: 104rpx;
+  line-height: 100rpx;
+  text-align: center;
+  font-size: 56rpx;
+  font-weight: 300;
+  color: #ffffff;
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 8rpx 24rpx rgba(0, 168, 112, 0.35);
+}

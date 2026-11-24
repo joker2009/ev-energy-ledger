@@ -1,0 +1,166 @@
+<view class="page add-page">
+  <view class="state" wx:if="{{loading}}">加载中…</view>
+  <block wx:else>
+  <view class="form-card">
+    <view class="form-row" id="field-date" bindtap="openDatePicker">
+      <text class="row-label">日期</text>
+      <view class="row-value">
+        <text>{{form.date}}</text>
+        <text class="row-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="form-block" id="field-odometerType">
+      <text class="block-label">里程类型</text>
+      <t-radio-group
+        value="{{form.odometerType}}"
+        options="{{odometerTypeOptions}}"
+        direction="horizontal"
+        borderless
+        bindchange="onOdometerTypeChange"
+      />
+    </view>
+
+    <view class="input-wrap" id="field-odometer">
+      <t-input
+        data-field="odometer"
+        label="里程读数"
+        type="digit"
+        value="{{form.odometer}}"
+        placeholder="{{form.odometerType === 'total' ? '总里程表读数' : '本次行程里程'}}"
+        suffix="km"
+        maxlength="10"
+        borderless
+        clearable
+        status="{{errors.odometer ? 'error' : 'default'}}"
+        tips="{{errors.odometer}}"
+        bindchange="onFieldInput"
+      />
+      <view class="recognize-row">
+        <text class="recognize-link" bindtap="onRecognizeMileage">
+          {{recognizing ? '识别中…' : '📷 拍照识别里程'}}
+        </text>
+      </view>
+    </view>
+
+    <view class="form-block" id="field-chargeType">
+      <text class="block-label">充电类型</text>
+      <t-radio-group
+        class="charge-options"
+        value="{{form.chargeType}}"
+        options="{{chargeTypeOptions}}"
+        direction="horizontal"
+        borderless
+        bindchange="onChargeTypeChange"
+      />
+    </view>
+
+    <view class="input-wrap" id="field-chargeKwh">
+      <t-input
+        data-field="chargeKwh"
+        label="充电量"
+        type="digit"
+        value="{{form.chargeKwh}}"
+        placeholder="{{isCharging ? '本次充入电量' : '未充电'}}"
+        suffix="kWh"
+        maxlength="8"
+        borderless
+        clearable
+        disabled="{{!isCharging}}"
+        status="{{errors.chargeKwh ? 'error' : 'default'}}"
+        tips="{{errors.chargeKwh}}"
+        bindchange="onFieldInput"
+      />
+    </view>
+
+    <view class="input-wrap" id="field-chargeFee">
+      <t-input
+        data-field="chargeFee"
+        label="金额"
+        type="digit"
+        value="{{form.chargeFee}}"
+        placeholder="本次花费，免费充电填 0"
+        suffix="元"
+        maxlength="8"
+        borderless
+        clearable
+        status="{{errors.chargeFee ? 'error' : 'default'}}"
+        tips="{{errors.chargeFee}}"
+        bindchange="onFieldInput"
+      />
+    </view>
+
+    <view class="form-block" id="field-soc">
+      <text class="block-label">电量区间（选填）</text>
+      <view class="soc-row">
+        <view class="soc-cell">
+          <t-input
+            data-field="socStart"
+            type="number"
+            value="{{form.socStart}}"
+            placeholder="起始"
+            suffix="%"
+            maxlength="3"
+            borderless
+            bindchange="onFieldInput"
+          />
+        </view>
+        <text class="soc-arrow">→</text>
+        <view class="soc-cell">
+          <t-input
+            data-field="socEnd"
+            type="number"
+            value="{{form.socEnd}}"
+            placeholder="结束"
+            suffix="%"
+            maxlength="3"
+            borderless
+            bindchange="onFieldInput"
+          />
+        </view>
+      </view>
+      <text class="block-error" wx:if="{{errors.soc}}">{{errors.soc}}</text>
+    </view>
+
+    <view class="input-wrap textarea-wrap">
+      <t-textarea
+        label="备注"
+        value="{{form.note}}"
+        placeholder="选填，最多 100 字"
+        maxlength="100"
+        indicator
+        borderless
+        bindchange="onNoteChange"
+      />
+    </view>
+  </view>
+
+  <view class="tip-card">
+    <text class="tip-title">计算口径</text>
+    <text class="tip-text">本段电耗 = 本次充电量 ÷ 本段里程 × 100。建议每次充到相近电量（如 90% 以上），结果更准确。</text>
+  </view>
+
+  <view class="submit-area">
+    <t-button
+      theme="primary"
+      size="large"
+      block="{{true}}"
+      loading="{{submitting}}"
+      disabled="{{!hasAnyInput || submitting}}"
+      bindtap="onSubmit"
+    >保存</t-button>
+  </view>
+
+  <t-date-time-picker
+    visible="{{datePickerVisible}}"
+    mode="date"
+    format="YYYY-MM-DD"
+    value="{{form.date}}"
+    start="2000-01-01"
+    end="{{today}}"
+    title="选择日期"
+    bindconfirm="onDateConfirm"
+    bindcancel="onDateCancel"
+  />
+  </block>
+</view>

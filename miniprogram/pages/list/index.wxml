@@ -1,0 +1,95 @@
+<view class="page">
+  <view class="month-bar">
+    <view class="month-nav" bindtap="onPrevMonth" aria-role="button" aria-label="上个月">‹</view>
+    <picker
+      mode="date"
+      fields="month"
+      value="{{monthValue}}"
+      end="{{maxMonth}}"
+      bindchange="onMonthChange"
+    >
+      <view class="month-label">{{monthLabel}}</view>
+    </picker>
+    <view
+      class="month-nav {{isCurrentMonth ? 'is-disabled' : ''}}"
+      bindtap="onNextMonth"
+      aria-role="button"
+      aria-label="下个月"
+    >›</view>
+  </view>
+
+  <view class="tool-row">
+    <text class="vehicle-name">{{vehicleName}}</text>
+    <view class="data-links">
+      <text class="data-link" bindtap="goImport">导入数据</text>
+      <text class="data-divider">·</text>
+      <text class="data-link" bindtap="goExport">导出数据</text>
+    </view>
+  </view>
+
+  <view class="summary-card">
+    <view class="summary-item">
+      <text class="summary-value">{{summary.distance}}</text>
+      <text class="summary-label">本月里程</text>
+    </view>
+    <view class="summary-divider"></view>
+    <view class="summary-item">
+      <text class="summary-value">{{summary.consumption}}</text>
+      <text class="summary-label">本月电耗</text>
+    </view>
+    <view class="summary-divider"></view>
+    <view class="summary-item">
+      <text class="summary-value">{{summary.fee}}</text>
+      <text class="summary-label">本月花费</text>
+    </view>
+  </view>
+
+  <view class="state" wx:if="{{loading}}">加载中…</view>
+
+  <view class="state" wx:elif="{{error}}">
+    <view class="state-title">加载失败</view>
+    <view class="state-desc">{{error}}</view>
+    <button class="primary-btn state-btn" bindtap="load">重试</button>
+  </view>
+
+  <view class="empty" wx:elif="{{groups.length === 0}}">
+    <view class="empty-icon">⚡</view>
+    <view class="empty-title">本月还没有记录</view>
+    <view class="empty-desc">记下第一笔，开始计算电耗与成本</view>
+    <button class="primary-btn empty-btn" bindtap="goAdd">记第一笔</button>
+  </view>
+
+  <view class="record-list" wx:else>
+    <block wx:for="{{groups}}" wx:key="date" wx:for-item="group">
+      <view class="date-header">{{group.label}}</view>
+      <t-swipe-cell
+        wx:for="{{group.records}}"
+        wx:key="_id"
+        wx:for-item="record"
+        right="{{swipeActions}}"
+        data-id="{{record._id}}"
+        bind:click="onSwipeClick"
+      >
+        <view class="record-card" data-id="{{record._id}}" bindtap="onEdit">
+          <view class="record-main">
+            <view class="record-left">
+              <text class="type-tag type-{{record.typeClass}}">{{record.typeLabel}}</text>
+              <text class="record-kwh">{{record.kwhText}}</text>
+            </view>
+            <view class="record-right">
+              <text class="record-fee">{{record.feeText}}</text>
+              <text class="record-arrow">›</text>
+            </view>
+          </view>
+          <view class="record-sub">{{record.odoText}} · {{record.segmentText}}</view>
+          <view class="record-metrics" wx:if="{{record.consumptionText || record.costText}}">
+            <text wx:if="{{record.consumptionText}}">{{record.consumptionText}}</text>
+            <text wx:if="{{record.costText}}">{{record.costText}}</text>
+          </view>
+        </view>
+      </t-swipe-cell>
+    </block>
+  </view>
+
+  <view class="fab" bindtap="goAdd" aria-role="button" aria-label="记一笔">+</view>
+</view>

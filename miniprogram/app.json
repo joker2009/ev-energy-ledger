@@ -1,0 +1,35 @@
+{
+  "pages": [
+    "pages/list/index",
+    "pages/stats/index",
+    "pages/add/index",
+    "pages/import/index",
+    "pages/export/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "能耗账本",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f6f7",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8a8f99",
+    "selectedColor": "#00a870",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/list/index",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/stats/index",
+        "text": "统计"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

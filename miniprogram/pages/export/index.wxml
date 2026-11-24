@@ -1,0 +1,55 @@
+<view class="page">
+  <view class="card intro">
+    <view class="intro-title">导出为 Excel</view>
+    <view class="intro-text">格式与导入模板兼容，包含里程类型与充电类型，导出后可以再次导入。</view>
+  </view>
+
+  <view class="card section">
+    <view class="section-title">导出范围</view>
+    <t-radio-group
+      class="scope-options"
+      value="{{scope}}"
+      options="{{scopeOptions}}"
+      direction="horizontal"
+      borderless
+      bindchange="onScopeChange"
+    />
+
+    <view class="month-row" wx:if="{{scope === 'month'}}">
+      <text class="month-row-label">月份</text>
+      <picker
+        mode="date"
+        fields="month"
+        value="{{monthValue}}"
+        end="{{maxMonth}}"
+        bindchange="onMonthChange"
+      >
+        <view class="month-row-value">{{monthLabel}} ›</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="submit-area">
+    <t-button
+      theme="primary"
+      size="large"
+      block="{{true}}"
+      loading="{{exporting}}"
+      disabled="{{exporting}}"
+      bindtap="onExport"
+    >{{exporting ? '生成中…' : '生成 Excel'}}</t-button>
+  </view>
+
+  <view class="card result-card" wx:if="{{result}}">
+    <view class="result-title">已导出 {{result.count}} 条记录</view>
+    <view class="result-file">{{result.fileName}}</view>
+    <view class="result-actions">
+      <t-button theme="light" size="medium" bindtap="openFile">打开 / 保存</t-button>
+      <t-button theme="light" size="medium" bindtap="shareFile">发送到聊天</t-button>
+    </view>
+  </view>
+
+  <view class="error-card" wx:if="{{error}}">{{error}}</view>
+
+  <view class="footnote">打开文件后，右上角菜单可保存到手机或转发给好友。</view>
+</view>

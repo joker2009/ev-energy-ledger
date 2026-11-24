@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="card intro">
+    <view class="intro-title">支持 Excel 导入</view>
+    <view class="intro-text">读取「充电数据」工作表。表头需包含：充电时间、总里程、充电度数、充电金额；充前/充后电量与备注可选。</view>
+    <view class="intro-tip">请先把文件发送到微信「文件传输助手」，再在这里选择。</view>
+  </view>
+
+  <view class="card section">
+    <view class="section-title">1. 选择文件</view>
+    <view class="file-row" bindtap="onChooseFile">
+      <view class="file-info">
+        <text class="file-name">{{file ? file.name : '选择 .xlsx / .xls 文件'}}</text>
+        <text class="file-size" wx:if="{{file}}">{{fileSizeText}}</text>
+      </view>
+      <text class="file-action">{{file ? '重新选择' : '选择'}}</text>
+    </view>
+  </view>
+
+  <view class="card section">
+    <view class="section-title">2. 默认充电类型</view>
+    <view class="section-desc">备注里识别不出类型时使用，导入后仍可逐条编辑</view>
+    <t-radio-group
+      class="type-options"
+      value="{{defaultType}}"
+      options="{{typeOptions}}"
+      direction="horizontal"
+      borderless
+      bindchange="onTypeChange"
+    />
+  </view>
+
+  <view class="submit-area">
+    <t-button
+      theme="primary"
+      size="large"
+      block="{{true}}"
+      loading="{{importing}}"
+      disabled="{{!file || importing}}"
+      bindtap="onImport"
+    >{{importing ? '导入中…' : '开始导入'}}</t-button>
+  </view>
+
+  <view class="card result-card" wx:if="{{result}}">
+    <view class="result-title">导入完成</view>
+    <view class="result-row"><text>读取</text><text>{{result.totalRows}} 行</text></view>
+    <view class="result-row"><text>成功</text><text>{{result.imported}} 条</text></view>
+    <view class="result-row"><text>重复跳过</text><text>{{result.skippedDuplicate}} 条</text></view>
+    <view class="result-row"><text>无效 / 失败</text><text>{{result.skippedInvalid}} 条</text></view>
+    <view class="result-errors" wx:if="{{result.errors.length}}">
+      <view class="error-item" wx:for="{{result.errors}}" wx:key="row">
+        第 {{item.row}} 行：{{item.message}}
+      </view>
+    </view>
+    <view class="result-actions">
+      <t-button theme="light" size="medium" bindtap="goBack">返回记录</t-button>
+    </view>
+  </view>
+
+  <view class="error-card" wx:if="{{error}}">{{error}}</view>
+</view>

@@ -1,0 +1,53 @@
+page {
+  --color-primary: #00a870;
+  --color-primary-soft: rgba(0, 168, 112, 0.1);
+  --color-bg: #f5f6f7;
+  --color-card: #ffffff;
+  --color-text: #1f2329;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+  --color-border: #eceef1;
+
+  --td-brand-color: #00a870;
+  --td-brand-color-active: #008858;
+  --td-brand-color-disabled: rgba(0, 168, 112, 0.35);
+  --td-brand-color-focus: rgba(0, 168, 112, 0.2);
+  --td-brand-color-light: rgba(0, 168, 112, 0.1);
+  --td-brand-color-light-active: rgba(0, 168, 112, 0.16);
+
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 28rpx;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 24rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.card {
+  background: var(--color-card);
+  border-radius: 24rpx;
+  padding: 32rpx;
+}
+
+.muted {
+  color: var(--color-text-secondary);
+}
+
+.primary-btn {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  line-height: 88rpx;
+  padding: 0 48rpx;
+}
+
+.primary-btn::after {
+  border: none;
+}
