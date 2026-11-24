@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 微信原生小程序：**新能源电车的能耗记录账本**（记录充电、里程、花费，统计百公里电耗与每公里成本）。
 
-当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别）已完成**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**订单识别代码已就绪，需要给云函数配置 `DEEPSEEK_API_KEY` 后用真实截图验证**；未配置时入口会提示并保留手动录入。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库已初始化并关联 GitHub `origin/main`。
+当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别）已完成**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**订单识别已配置 `DEEPSEEK_API_KEY`，并通过真实调用验证（`npm run smoke:ai`）**；未配置时入口会提示并保留手动录入。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库已初始化并关联 GitHub `origin/main`。
 
 ## 目录结构
 
