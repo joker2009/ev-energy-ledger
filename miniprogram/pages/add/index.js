@@ -41,6 +41,20 @@ const normalizeDate = (value, fallback) => {
   return Number.isNaN(date.getTime()) ? fallback : formatDate(date)
 }
 
+const compressImage = (src) =>
+  new Promise((resolve) => {
+    if (typeof wx.compressImage !== 'function') {
+      resolve(src)
+      return
+    }
+    wx.compressImage({
+      src,
+      quality: 70,
+      success: (res) => resolve(res.tempFilePath || src),
+      fail: () => resolve(src)
+    })
+  })
+
 Page({
   data: {
     today: '',
@@ -217,12 +231,15 @@ Page({
       orderImage: file.tempFilePath,
       recognizedSummary: []
     })
+
+    const uploadPath = await compressImage(file.tempFilePath)
+    this.setData({ orderImage: uploadPath })
     let fileID = ''
 
     try {
       const upload = await wx.cloud.uploadFile({
         cloudPath: `orders/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`,
-        filePath: file.tempFilePath
+        filePath: uploadPath
       })
       fileID = upload.fileID
 
@@ -287,9 +304,12 @@ Page({
       this.refreshHasAnyInput()
       wx.showToast({ title: `已识别 ${count} 项，请核对`, icon: 'none' })
     } catch (err) {
-      wx.showToast({
-        title: (err && err.message) || '识别失败，请手动填写',
-        icon: 'none'
+      const message = (err && (err.message || err.errMsg)) || '识别失败，请手动填写'
+      console.error('[recognizeChargeOrder]', err)
+      wx.showModal({
+        title: '识别失败',
+        content: message,
+        showCancel: false
       })
     } finally {
       this.setData({ recognizing: false })

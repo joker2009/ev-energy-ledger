@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 微信原生小程序：**新能源电车的能耗记录账本**（记录充电、里程、花费，统计百公里电耗与每公里成本）。
 
-当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别）已完成**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**订单识别已配置 `DEEPSEEK_API_KEY`，并通过真实调用验证（`npm run smoke:ai`）**；未配置时入口会提示并保留手动录入。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库已初始化并关联 GitHub `origin/main`。
+当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别）已完成**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**订单识别已配置 `DEEPSEEK_API_KEY`，并用真实订单截图验证通过**；客户端已加图片压缩与完整错误弹窗。**云函数超时当前仍是 3s，真机大图必须在云开发控制台改为 60s**（`config.json` 的 timeout 不生效）。未配置时入口会提示并保留手动录入。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库已初始化并关联 GitHub `origin/main`。
 
 ## 目录结构
 
@@ -75,7 +75,7 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
   - `DEEPSEEK_API_KEY`：必填，**绝不写进代码或提交仓库**
   - `DEEPSEEK_MODEL`：默认 `deepseek-flash`
   - `DEEPSEEK_BASE_URL`：默认 `https://api.deepseek.com`
-  - 函数超时设为 **60s**；多模态调用可能超过默认的几秒
+  - 函数超时设为 **60s**；多模态调用可能超过默认的几秒。`config.json` 的 `timeout` 不会生效，必须在该控制台设置；用 `cli cloud functions info` 或控制台确认当前值（当前实测仍为 3s）。
 - 查看环境：工具「云开发」控制台，或 `cli cloud env list --project .`。
 
 ## 二期功能（已实现）

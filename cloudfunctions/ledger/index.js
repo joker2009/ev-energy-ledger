@@ -909,6 +909,7 @@ async function recognizeChargeOrder(openid, payload) {
     )
   } catch (err) {
     const message = String((err && err.message) || '')
+    console.error('[recognizeChargeOrder]', message)
     if (/401|unauthorized|invalid.*key|authentication/i.test(message)) {
       badRequest('DeepSeek API Key 无效，请检查云函数环境变量')
     }
