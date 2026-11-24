@@ -1,5 +1,5 @@
 {
-  "description": "新能源电车能耗账本",
+  "description": "新能源电车电耗账本",
   "compileType": "miniprogram",
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",

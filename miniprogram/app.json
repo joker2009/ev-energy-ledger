@@ -7,7 +7,7 @@
     "pages/export/index"
   ],
   "window": {
-    "navigationBarTitleText": "能耗账本",
+    "navigationBarTitleText": "电耗账本",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f5f6f7",

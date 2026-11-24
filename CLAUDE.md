@@ -40,6 +40,7 @@ scripts/import-smoke.js    # Excel 导入冒烟（默认合成样本，可传真
 scripts/lib/fixture.js     # 测试用合成 Excel 生成器，不含真实数据
 scripts/ocr-smoke.js       # OCR 调用冒烟（额度不足时打印 SKIPPED）
 scripts/ocr-parse-test.js  # OCR 候选提取纯函数单测
+scripts/prune-miniprogram-npm.js  # 裁剪 TDesign 未使用组件，控制主包体积
 package.json               # 根目录仅含 devDependencies（自动化 SDK）
 ```
 
@@ -169,7 +170,9 @@ DEVTOOLS="/Applications/wechatwebdevtools.app/Contents/MacOS/cli"
 - 首次使用 CLI 需在工具「设置 → 安全设置」开启服务端口，或提供 `--token`。已被关闭时 CLI 会提示确认；不要用管道输入 `y` 绕过这个安全确认，让用户自己开启。
 - 引入或升级运行时依赖（TDesign/echarts）时，在 `miniprogram/` 目录下 `npm install`，再执行 `build-npm --project .`，否则小程序端解析不到包。`miniprogram_npm/` 是产物，不要手改。
 - 当前使用 TDesign 1.18.0；页面按需在各自 json 的 `usingComponents` 里注册，路径形如 `tdesign-miniprogram/input/input`。
-- 发布前检查主包体积：TDesign 的 `miniprogram_npm` 未压缩约 5.2MB、压缩后约 0.8MB；若工具提示超限，优先裁剪 TDesign（只保留用到的组件）或改用原生组件，不要把图表库放进主包之外。
+- **主包有 2MB 限制**。`build-npm` 会生成 TDesign 全部组件（约 5MB），必须执行 `npm run prune:npm`，脚本只保留 `scripts/prune-miniprogram-npm.js` 白名单中的组件及其依赖。当前裁剪后 TDesign 约 0.53MB，加上 ECharts 约 0.97MB，主包源码约 1.57MB。
+- 新增 TDesign 组件时，同步把它加到裁剪脚本的 `KEEP` 列表，否则下次裁剪会被删掉；`config-provider`、`common`、`mixins`、`icon` 等公共依赖不要删。
+- 开发者工具 CLI 的 `preview` 在当前版本有二维码输出路径 bug；验证体积请用 GUI「预览/上传」，或直接看「详情 → 本地代码」。
 
 ### 自动化冒烟
 
@@ -181,6 +184,7 @@ npm run smoke:cloud    # 云端：计算口径、列表、编辑、删除、统�
 npm run smoke:import   # Excel 导入：默认合成样本，可传真实文件路径
 npm run smoke:export   # Excel 导出：全部/指定月份、内容校验、云端上传下载
 npm run smoke:ocr      # OCR：默认读 /tmp/odo.png，额度不足时打印 SKIPPED
+npm run prune:npm      # build-npm 后裁剪 TDesign 未使用组件（控制主包 <2MB）
 ```
 
 - `scripts/smoke.js` 校验编译、记录/统计 tab、「+」进入记一笔、表单默认值与校验；生成 `/tmp/mywxapp-list.png`、`/tmp/mywxapp-add.png`。

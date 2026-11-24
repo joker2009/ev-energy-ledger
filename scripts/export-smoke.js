@@ -76,10 +76,10 @@ async function main() {
       '导出全部'
     )
     assert.ok(allExport.count >= 3, '全部导出数量不足')
-    assert.match(allExport.fileName, /^能耗账本-全部-\d{4}-\d{2}-\d{2}\.xlsx$/, '全部导出文件名错误')
+    assert.match(allExport.fileName, /^电耗账本-全部-\d{4}-\d{2}-\d{2}\.xlsx$/, '全部导出文件名错误')
 
     const rows = readSheet(allExport.base64)
-    assert.strictEqual(rows[0][0], '能耗账本 - 充电数据', '标题行错误')
+    assert.strictEqual(rows[0][0], '电耗账本 - 充电数据', '标题行错误')
     assert.strictEqual(rows[1][2], '里程类型', '缺少里程类型列')
     assert.strictEqual(rows[1][3], '充电类型', '缺少充电类型列')
     assert.strictEqual(rows.length, 2 + allExport.count, '导出行数与记录数不一致')
@@ -105,7 +105,7 @@ async function main() {
     assert.ok(monthExport.count >= 3, '测试月导出数量不足')
     assert.strictEqual(
       monthExport.fileName,
-      `能耗账本-${FIXTURE_MONTH}.xlsx`,
+      `电耗账本-${FIXTURE_MONTH}.xlsx`,
       '月份导出文件名错误'
     )
 

@@ -884,7 +884,7 @@ async function exportRecords(openid, payload) {
   }
 
   const rows = [
-    ['能耗账本 - 充电数据'],
+    ['电耗账本 - 充电数据'],
     [
       '充电时间', '总里程(公里)', '里程类型', '充电类型', '充电前电量(%)',
       '充电后电量(%)', '充电度数(度)', '车端电量(度)', '充电金额(元)',
@@ -922,8 +922,8 @@ async function exportRecords(openid, payload) {
   const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
 
   const fileName = month
-    ? `能耗账本-${month}.xlsx`
-    : `能耗账本-全部-${chinaToday()}.xlsx`
+    ? `电耗账本-${month}.xlsx`
+    : `电耗账本-全部-${chinaToday()}.xlsx`
 
   if (payload.returnBase64) {
     return { count: records.length, fileName, base64: buffer.toString('base64') }

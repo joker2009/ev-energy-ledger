@@ -9,7 +9,8 @@
     "smoke:cloud": "node scripts/cloud-smoke.js",
     "smoke:import": "node scripts/import-smoke.js",
     "smoke:export": "node scripts/export-smoke.js",
-    "smoke:ocr": "node scripts/ocr-smoke.js"
+    "smoke:ocr": "node scripts/ocr-smoke.js",
+    "prune:npm": "node scripts/prune-miniprogram-npm.js"
   },
   "devDependencies": {
     "miniprogram-automator": "^0.13.0",
