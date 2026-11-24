@@ -55,7 +55,13 @@ Page({
     loading: true,
     error: '',
     swipeActions: [
-      { text: '删除', style: 'background: #d54941; color: #ffffff;' }
+      {
+        text: '删除',
+        icon: { name: 'delete', size: '36rpx' },
+        className: 'swipe-delete',
+        style:
+          'width: 128rpx; height: calc(100% - 16rpx); margin: 8rpx 12rpx 8rpx 0; padding: 0; border-radius: 20rpx; background: #fff1f0; color: #d54941;'
+      }
     ]
   },
 

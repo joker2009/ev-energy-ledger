@@ -166,6 +166,24 @@
   margin-bottom: 16rpx;
 }
 
+.swipe-delete {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.swipe-delete .t-swipe-cell__icon {
+  font-size: 36rpx;
+}
+
+.swipe-delete .t-swipe-cell__icon + .t-swipe-cell__text:not(:empty) {
+  margin-left: 0;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  line-height: 1.2;
+}
+
 .record-main {
   display: flex;
   align-items: center;
