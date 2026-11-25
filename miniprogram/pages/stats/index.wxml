@@ -24,7 +24,7 @@
     </view>
   </view>
 
-  <view class="state" wx:if="{{loading}}">加载中…</view>
+  <view class="state" wx:if="{{loading && !hasChartData}}">加载中…</view>
 
   <view class="state" wx:elif="{{error}}">
     <view class="state-title">加载失败</view>

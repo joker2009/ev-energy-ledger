@@ -17,7 +17,14 @@ Page({
     error: ''
   },
 
-  onChooseFile() {
+  async onChooseFile() {
+    try {
+      await getApp().requirePrivacy()
+    } catch (err) {
+      wx.showToast({ title: '需同意隐私保护指引后才能选择文件', icon: 'none' })
+      return
+    }
+
     wx.chooseMessageFile({
       count: 1,
       type: 'file',

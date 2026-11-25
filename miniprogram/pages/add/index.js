@@ -79,7 +79,7 @@ Page({
     isEditing: false,
     loading: false,
     recognizing: false,
-    orderImage: '',
+    orderImages: [],
     recognizedSummary: []
   },
 
@@ -203,10 +203,17 @@ Page({
   async onRecognizeOrder() {
     if (this.data.recognizing) return
 
+    try {
+      await getApp().requirePrivacy()
+    } catch (err) {
+      wx.showToast({ title: '需同意隐私保护指引后才能使用拍照识别', icon: 'none' })
+      return
+    }
+
     let media
     try {
       media = await wx.chooseMedia({
-        count: 1,
+        count: 3,
         mediaType: ['image'],
         sourceType: ['camera', 'album'],
         sizeType: ['compressed']
@@ -219,31 +226,35 @@ Page({
       return
     }
 
-    const file = media.tempFiles && media.tempFiles[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      wx.showToast({ title: '图片不能超过 5MB', icon: 'none' })
+    const files = (media.tempFiles || []).slice(0, 3)
+    if (!files.length) return
+    if (files.some((file) => file.size > 5 * 1024 * 1024)) {
+      wx.showToast({ title: '单张图片不能超过 5MB', icon: 'none' })
       return
     }
 
     this.setData({
       recognizing: true,
-      orderImage: file.tempFilePath,
+      orderImages: files.map((file) => file.tempFilePath),
       recognizedSummary: []
     })
 
-    const uploadPath = await compressImage(file.tempFilePath)
-    this.setData({ orderImage: uploadPath })
-    let fileID = ''
+    const uploadPaths = await Promise.all(
+      files.map((file) => compressImage(file.tempFilePath))
+    )
+    this.setData({ orderImages: uploadPaths })
+    const uploadedFileIDs = []
 
     try {
-      const upload = await wx.cloud.uploadFile({
-        cloudPath: `orders/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`,
-        filePath: uploadPath
-      })
-      fileID = upload.fileID
+      for (let index = 0; index < uploadPaths.length; index += 1) {
+        const upload = await wx.cloud.uploadFile({
+          cloudPath: `orders/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.jpg`,
+          filePath: uploadPaths[index]
+        })
+        uploadedFileIDs.push(upload.fileID)
+      }
 
-      const result = await ledger.recognizeChargeOrder({ fileID })
+      const result = await ledger.recognizeChargeOrder({ fileIDs: uploadedFileIDs })
       const fields = result.fields || {}
       const patch = {}
 
@@ -313,17 +324,23 @@ Page({
       })
     } finally {
       this.setData({ recognizing: false })
-      if (fileID) {
-        wx.cloud.deleteFile({ fileList: [fileID] }).catch(() => {})
+      if (uploadedFileIDs.length) {
+        wx.cloud.deleteFile({ fileList: uploadedFileIDs }).catch(() => {})
       }
     }
   },
 
-  previewOrderImage() {
-    if (!this.data.orderImage) return
+  previewOrderImage(e) {
+    const images = this.data.orderImages || []
+    if (!images.length) return
+
+    const current =
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.src) ||
+      images[0]
+
     wx.previewImage({
-      urls: [this.data.orderImage],
-      current: this.data.orderImage
+      urls: images,
+      current
     })
   },
 

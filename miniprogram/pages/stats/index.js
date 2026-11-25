@@ -108,6 +108,10 @@ Page({
   },
 
   onUnload() {
+    this.disposeCharts()
+  },
+
+  disposeCharts() {
     Object.keys(this.charts).forEach((key) => {
       const chart = this.charts[key]
       if (chart && chart.dispose) chart.dispose()
@@ -164,6 +168,7 @@ Page({
       })
     } catch (err) {
       if (requestId !== this.requestId) return
+      this.disposeCharts()
       this.statsData = null
       this.setData({
         metrics: { consumption: '—', costPerKm: '—', distance: '—' },

@@ -10,6 +10,7 @@
     "smoke:import": "node scripts/import-smoke.js",
     "smoke:export": "node scripts/export-smoke.js",
     "smoke:ai": "node scripts/ai-order-smoke.js",
+    "smoke:ai:multi": "node scripts/ai-multi-smoke.js",
     "prune:npm": "node scripts/prune-miniprogram-npm.js"
   },
   "devDependencies": {

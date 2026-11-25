@@ -38,6 +38,7 @@ scripts/cloud-smoke.js     # 云端冒烟：计算口径、列表、编辑、删
 scripts/import-smoke.js    # Excel 导入冒烟（默认合成样本，可传真实文件路径）
 scripts/export-smoke.js    # Excel 导出冒烟（全部/指定月份、云端上传下载）
 scripts/ai-order-smoke.js  # 订单识别联调（用合成订单图，需配置 Key）
+scripts/ai-multi-smoke.js  # 三图联调（开始/结束/订单），校验 SOC/里程/金额
 scripts/order-parse-test.js # 订单识别 JSON/字段归一化单测
 scripts/lib/fixture.js     # 测试用合成 Excel 生成器，不含真实数据
 scripts/prune-miniprogram-npm.js  # 裁剪 TDesign 未使用组件，控制主包体积
@@ -106,13 +107,13 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
 
 ### 充电订单截图识别（DeepSeek 多模态）
 
-- 记一笔页顶部「识别充电订单截图」→ `wx.chooseMedia` → 云存储 → `ledger.recognizeChargeOrder`。
-- 云函数读取 `DEEPSEEK_API_KEY` 环境变量，调用 `https://api.deepseek.com/chat/completions`，模型默认 `deepseek-flash`，图片以 base64 data URL 放在 `user` 消息的 `image_url` 中。
-- 返回严格 JSON：日期/时间、总里程、充电量、金额、SOC、充电类型、站点、备注；`lib/order.js` 负责 JSON 解析与范围归一化。
-- 客户端回填表单，并保留本地截图预览（缩略图 + `wx.previewImage`）和识别字段清单，供人工核对；**不会自动保存**。
+- 记一笔页顶部「识别充电订单截图」→ `wx.chooseMedia` 一次选 **1–3 张**（充电开始、充电结束、订单截图），压缩后上传云存储 → `ledger.recognizeChargeOrder({ fileIDs })`。
+- 云函数支持 `fileIDs` / `imagesBase64`（最多 3 张）或单个 `fileID` / `imageBase64`；每张图片作为 `image_url` 发送，提示词要求按内容区分开始/结束/订单并综合提取。
+- 字段：`socStart` / `socEnd` 取开始/结束界面；`odometer` 优先开始界面、否则结束界面；电量/实付金额/日期/站点/类型取订单截图。金额必须取实付（优惠券/折扣/退款后的金额），备注不包含金额明细；没有明确年月日时 `date` 为 null，不用状态栏时间猜测。
+- 客户回填表单，并保留最多 3 张本地截图缩略图（`wx.previewImage`）+ 识别字段清单，供人工核对；**不会自动保存**。
 - 截图里没有里程时留空，由用户手动填写。
-- 环境变量：`DEEPSEEK_API_KEY`（必填）、`DEEPSEEK_MODEL`（默认 `deepseek-flash`）、`DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`）；云函数超时建议设为 60s。
-- 截图会发送给 DeepSeek；提示词明确不提取订单号/手机号/账号/支付方式，隐私指引需声明第三方 AI 处理与云存储临时文件。
+- 环境变量：`DEEPSEEK_API_KEY`（必填）、`DEEPSEEK_MODEL`（默认 `deepseek-flash`）、`DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`）；云函数超时必须为 **60s**（当前已配置，`config.json` 不会修改该值）。
+- 截图会发送给 DeepSeek；提示词明确不提取订单号/手机号/账号/支付方式/车牌，隐私指引需声明第三方 AI 处理与云存储临时文件。
 - 未配置 Key 或 API 报错时返回业务错误，页面保留手动输入。
 
 ## v1 范围（严格守住）
@@ -193,6 +194,7 @@ npm run smoke:cloud    # 云端：计算口径、列表、编辑、删除、统�
 npm run smoke:import   # Excel 导入：默认合成样本，可传真实文件路径
 npm run smoke:export   # Excel 导出：全部/指定月份、内容校验、云端上传下载
 npm run smoke:ai       # 订单识别：合成订单图调用 DeepSeek，未配置 Key 时 SKIPPED
+npm run smoke:ai:multi # 三图识别：开始/结束/订单，校验 SOC/里程/实付金额
 npm run prune:npm      # build-npm 后裁剪 TDesign 未使用组件（控制主包 <2MB）
 ```
 
@@ -202,6 +204,7 @@ npm run prune:npm      # build-npm 后裁剪 TDesign 未使用组件（控制主
 - `scripts/export-smoke.js` 导入合成样本后用 `exportRecords` 的 `returnBase64` 解析工作簿，校验全部/指定月份的标题、列、精度、时分与文件名，再验证云端上传、下载和清理，最后按批次删除测试数据。
 - `scripts/order-parse-test.js` 验证大模型返回 JSON 的解析、日期/金额/电量/SOC/类型范围归一化；真正的 DeepSeek 调用需要云函数配置 Key 后，用真实订单截图在真机验证。
 - `scripts/ai-order-smoke.js` 读取 `/tmp/charge-order.png`（合成订单图）直接调用 `recognizeChargeOrder`；未配置 `DEEPSEEK_API_KEY` 时打印 `SKIPPED`，配置后校验日期/电量/金额/SOC/里程/类型/站点。
+- `scripts/ai-multi-smoke.js` 用 `/tmp/charge-start.png`、`/tmp/charge-end.png`、`/tmp/charge-order.png` 三张图调用，校验起始/结束 SOC、总里程优先开始图、实付金额和站点。
 - 所有 automator 脚本都通过 `miniProgram.evaluate` 访问 `getCurrentPages()` 调用页面方法（`page.callMethod` 在当前基础库不可用）。
 
 ## 协作方式

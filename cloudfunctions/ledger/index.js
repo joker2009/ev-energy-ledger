@@ -862,25 +862,53 @@ async function recognizeChargeOrder(openid, payload) {
     badRequest('AI 识别未配置：请在云函数环境变量设置 DEEPSEEK_API_KEY')
   }
 
-  let buffer
-  if (payload.imageBase64) {
-    const base64 = String(payload.imageBase64)
-    if (base64.length > 8 * 1024 * 1024) badRequest('图片超过 6MB 限制')
-    buffer = Buffer.from(base64, 'base64')
+  const inputs = []
+
+  if (Array.isArray(payload.fileIDs) && payload.fileIDs.length) {
+    if (payload.fileIDs.length > 3) badRequest('最多上传 3 张图片')
+    for (const fileID of payload.fileIDs) {
+      const downloaded = await cloud.downloadFile({ fileID: String(fileID) })
+      inputs.push(downloaded.fileContent)
+    }
+  } else if (Array.isArray(payload.imagesBase64) && payload.imagesBase64.length) {
+    if (payload.imagesBase64.length > 3) badRequest('最多上传 3 张图片')
+    for (const base64 of payload.imagesBase64) {
+      inputs.push(Buffer.from(String(base64), 'base64'))
+    }
+  } else if (payload.imageBase64) {
+    inputs.push(Buffer.from(String(payload.imageBase64), 'base64'))
   } else if (payload.fileID) {
     const downloaded = await cloud.downloadFile({ fileID: String(payload.fileID) })
-    buffer = downloaded.fileContent
+    inputs.push(downloaded.fileContent)
   } else {
     badRequest('缺少图片')
   }
 
-  if (!buffer || buffer.length === 0) badRequest('图片为空')
-  if (buffer.length > 6 * 1024 * 1024) badRequest('图片超过 6MB 限制')
+  if (!inputs.length) badRequest('图片为空')
+  for (const buffer of inputs) {
+    if (!buffer || buffer.length === 0) badRequest('图片为空')
+    if (buffer.length > 6 * 1024 * 1024) badRequest('单张图片超过 6MB 限制')
+  }
 
   const baseUrl = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/+$/, '')
   const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
-  const mime = detectImageMime(buffer)
-  const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`
+
+  const userContent = [
+    {
+      type: 'text',
+      text: '请综合这些充电相关图片提取字段。图片可能包含充电开始界面、充电结束界面和充电订单截图，顺序不固定。'
+    }
+  ]
+  inputs.forEach((buffer, index) => {
+    userContent.push({ type: 'text', text: `图片${index + 1}：` })
+    userContent.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:${detectImageMime(buffer)};base64,${buffer.toString('base64')}`,
+        detail: 'high'
+      }
+    })
+  })
 
   let response
   try {
@@ -893,17 +921,11 @@ async function recognizeChargeOrder(openid, payload) {
           { role: 'system', content: ORDER_PROMPT },
           {
             role: 'user',
-            content: [
-              { type: 'text', text: '请提取这张充电订单截图中的字段。' },
-              {
-                type: 'image_url',
-                image_url: { url: dataUrl, detail: 'high' }
-              }
-            ]
+            content: userContent
           }
         ],
         temperature: 0,
-        max_tokens: 800,
+        max_tokens: 1000,
         stream: false
       }
     )

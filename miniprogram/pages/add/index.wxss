@@ -120,25 +120,30 @@
 }
 
 .preview-body {
-  display: flex;
   margin-top: 16rpx;
+}
+
+.preview-gallery {
+  display: flex;
 }
 
 .preview-thumb {
   flex-shrink: 0;
-  width: 150rpx;
-  height: 150rpx;
+  width: 140rpx;
+  height: 140rpx;
+  margin-right: 14rpx;
   border-radius: 12rpx;
   background: #f2f3f5;
 }
 
+.preview-thumb:last-child {
+  margin-right: 0;
+}
+
 .preview-fields {
-  flex: 1;
-  min-width: 0;
-  margin-left: 20rpx;
+  margin-top: 16rpx;
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
 
 .preview-field {
