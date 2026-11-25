@@ -93,6 +93,29 @@ async function main() {
     assert.ok(!statsData.error, `统计页加载报错: ${statsData.error}`)
     console.log('PASS 统计 tab')
 
+    await miniProgram.evaluate(function () {
+      const page = getCurrentPages().slice(-1)[0]
+      page.onRangeChange({ currentTarget: { dataset: { value: 'year' } } })
+    })
+    await sleep(1500)
+    const yearData = await statsPage.data()
+    assert.strictEqual(yearData.range, 'year', '未切换到按年')
+    assert.ok(
+      Array.isArray(yearData.availableYears) && yearData.availableYears.length > 0,
+      '年度列表为空'
+    )
+    assert.ok(yearData.year, '未选择年份')
+    assert.ok(yearData.totalsView && yearData.totalsView.fee !== undefined, '年度汇总未渲染')
+    const yearMonthCount = await miniProgram.evaluate(function () {
+      const page = getCurrentPages().slice(-1)[0]
+      return (page.statsData && page.statsData.months ? page.statsData.months : []).length
+    })
+    assert.strictEqual(yearMonthCount, 12, '年度统计应有 12 个月')
+    const yearShot = '/tmp/mywxapp-stats-year.png'
+    await miniProgram.screenshot({ path: yearShot })
+    console.log('SCREENSHOT', yearShot)
+    console.log('PASS 统计按年维度')
+
     await miniProgram.switchTab('/pages/list/index')
     await sleep(300)
     const addPage = await miniProgram.navigateTo('/pages/add/index')

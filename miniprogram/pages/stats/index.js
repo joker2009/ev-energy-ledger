@@ -3,6 +3,7 @@ import * as echarts from '../../components/ec-canvas/echarts'
 const ledger = require('../../utils/ledger')
 
 const RANGE_SIX = 6
+const RANGE_YEAR = 'year'
 const RANGE_ALL = 0
 
 const TYPE_META = [
@@ -80,10 +81,20 @@ Page({
   data: {
     range: RANGE_SIX,
     rangeLabel: '近6个月',
+    currentMonth: '',
+    availableYears: [],
+    year: '',
+    yearLabel: '',
+    yearIndex: -1,
     metrics: {
       consumption: '—',
       costPerKm: '—',
       distance: '—'
+    },
+    totalsView: {
+      fee: '¥0.00',
+      kwh: '0.0',
+      count: '0'
     },
     hasConsumption: false,
     hasCost: false,
@@ -125,11 +136,52 @@ Page({
   },
 
   onRangeChange(e) {
-    const range = Number(e.currentTarget.dataset.value)
+    const raw = e.currentTarget.dataset.value
+    const range = raw === 'year' ? RANGE_YEAR : Number(raw)
     if (range === this.data.range) return
+
+    const patch = { range }
+
+    if (range === RANGE_YEAR) {
+      const currentYear =
+        (this.data.currentMonth || '').slice(0, 4) ||
+        String(new Date().getFullYear())
+      let year = this.data.year
+
+      if (!year || !this.data.availableYears.includes(year)) {
+        year = this.data.availableYears.includes(currentYear)
+          ? currentYear
+          : (this.data.availableYears[0] || currentYear)
+      }
+
+      patch.year = year
+      patch.yearLabel = `${year}年`
+      patch.yearIndex = this.data.availableYears.indexOf(year)
+    }
+
+    this.setData(patch, () => this.load())
+  },
+
+  onYearPrev() {
+    const index = this.data.yearIndex
+    if (index < 0 || index >= this.data.availableYears.length - 1) return
+    const year = this.data.availableYears[index + 1]
     this.setData({
-      range,
-      rangeLabel: range === RANGE_SIX ? '近6个月' : '全部'
+      year,
+      yearLabel: `${year}年`,
+      yearIndex: index + 1
+    })
+    this.load()
+  },
+
+  onYearNext() {
+    const index = this.data.yearIndex
+    if (index <= 0) return
+    const year = this.data.availableYears[index - 1]
+    this.setData({
+      year,
+      yearLabel: `${year}年`,
+      yearIndex: index - 1
     })
     this.load()
   },
@@ -140,11 +192,28 @@ Page({
     this.setData({ loading: true, error: '' })
 
     try {
-      const data = await ledger.getStats(this.data.range)
+      const isYear = this.data.range === RANGE_YEAR
+      const payload = isYear
+        ? { year: Number(this.data.year) }
+        : { months: Number(this.data.range) }
+
+      const data = await ledger.getStats(payload)
       if (requestId !== this.requestId) return
 
       this.statsData = data
       const months = data.months || []
+      const availableYears = data.availableYears || []
+      let year = this.data.year
+
+      if (isYear && (!year || !availableYears.includes(year))) {
+        const currentYear =
+          (data.currentMonth || '').slice(0, 4) ||
+          String(new Date().getFullYear())
+        year = availableYears.includes(currentYear)
+          ? currentYear
+          : (availableYears[0] || currentYear)
+      }
+
       const byType = data.byType || {}
       const hasConsumption = months.some(
         (item) => item.consumption !== null && item.consumption !== undefined
@@ -157,7 +226,13 @@ Page({
       )
 
       this.setData({
+        currentMonth: data.currentMonth || '',
+        availableYears,
+        year,
+        yearLabel: year ? `${year}年` : '',
+        yearIndex: availableYears.indexOf(year),
         metrics: this.formatMetrics(data.totals || {}),
+        totalsView: this.formatTotals(data.totals || {}),
         hasConsumption,
         hasCost,
         hasTypeFee,
@@ -172,6 +247,7 @@ Page({
       this.statsData = null
       this.setData({
         metrics: { consumption: '—', costPerKm: '—', distance: '—' },
+        totalsView: { fee: '¥0.00', kwh: '0.0', count: '0' },
         hasConsumption: false,
         hasCost: false,
         hasTypeFee: false,
@@ -191,6 +267,14 @@ Page({
         ? '—'
         : Number(totals.costPerKm).toFixed(2),
       distance: totals.distanceKm ? trimNumber(totals.distanceKm) : '—'
+    }
+  },
+
+  formatTotals(totals) {
+    return {
+      fee: `¥${Number(totals.fee || 0).toFixed(2)}`,
+      kwh: Number(totals.chargeKwh || 0).toFixed(1),
+      count: String(totals.recordCount || 0)
     }
   },
 

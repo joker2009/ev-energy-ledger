@@ -411,15 +411,35 @@ async function listRecords(openid, payload) {
 }
 
 async function getStats(openid, payload) {
-  const months = Number(payload.months)
-  const wanted = Number.isFinite(months) && months > 0 ? Math.min(Math.floor(months), 24) : 0
-
   const all = computeRecords(await fetchRecords(openid))
   const currentMonth = chinaMonth()
+  const currentYear = currentMonth.slice(0, 4)
 
-  const keys = wanted
-    ? recentMonthKeys(wanted)
-    : Array.from(new Set(all.map((record) => record.date.slice(0, 7)))).sort()
+  const yearSet = new Set(all.map((record) => record.date.slice(0, 4)))
+  yearSet.add(currentYear)
+  const availableYears = Array.from(yearSet).sort((a, b) => b.localeCompare(a))
+
+  const year = Number(payload.year)
+  const useYear =
+    Number.isInteger(year) && year >= 2000 && year <= Number(currentYear)
+
+  const months = Number(payload.months)
+  const wanted =
+    !useYear && Number.isFinite(months) && months > 0
+      ? Math.min(Math.floor(months), 24)
+      : 0
+
+  let keys
+  if (useYear) {
+    keys = Array.from(
+      { length: 12 },
+      (_, index) => `${year}-${pad2(index + 1)}`
+    )
+  } else if (wanted) {
+    keys = recentMonthKeys(wanted)
+  } else {
+    keys = Array.from(new Set(all.map((record) => record.date.slice(0, 7)))).sort()
+  }
 
   const monthSet = new Set(keys)
   const inRange = all.filter((record) => monthSet.has(record.date.slice(0, 7)))
@@ -446,6 +466,8 @@ async function getStats(openid, payload) {
 
   return {
     currentMonth,
+    availableYears,
+    year: useYear ? String(year) : '',
     months: monthly,
     totals: summarize(inRange),
     byType

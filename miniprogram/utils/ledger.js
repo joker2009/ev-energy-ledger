@@ -29,6 +29,6 @@ module.exports = {
   recognizeChargeOrder: (payload) => call('recognizeChargeOrder', payload),
   exportRecords: (payload) => call('exportRecords', payload),
   listRecords: (month) => call('listRecords', { month }),
-  getStats: (months) => call('getStats', { months }),
+  getStats: (payload) => call('getStats', payload),
   deleteRecord: (_id) => call('deleteRecord', { _id })
 }

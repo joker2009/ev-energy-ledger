@@ -1,7 +1,20 @@
 <view class="page">
   <view class="range-bar">
     <view class="range-option {{range === 6 ? 'is-active' : ''}}" data-value="6" bindtap="onRangeChange">近6个月</view>
+    <view class="range-option {{range === 'year' ? 'is-active' : ''}}" data-value="year" bindtap="onRangeChange">按年</view>
     <view class="range-option {{range === 0 ? 'is-active' : ''}}" data-value="0" bindtap="onRangeChange">全部</view>
+  </view>
+
+  <view class="year-bar" wx:if="{{range === 'year'}}">
+    <view
+      class="year-nav {{yearIndex >= availableYears.length - 1 ? 'is-disabled' : ''}}"
+      bindtap="onYearPrev"
+    >‹</view>
+    <text class="year-label">{{yearLabel}}</text>
+    <view
+      class="year-nav {{yearIndex <= 0 ? 'is-disabled' : ''}}"
+      bindtap="onYearNext"
+    >›</view>
   </view>
 
   <view class="metric-card">
@@ -21,6 +34,23 @@
       <text class="metric-value">{{metrics.distance}}</text>
       <text class="metric-label">总里程</text>
       <text class="metric-unit">km</text>
+    </view>
+  </view>
+
+  <view class="totals-card">
+    <view class="total-item">
+      <text class="total-value">{{totalsView.fee}}</text>
+      <text class="total-label">总花费</text>
+    </view>
+    <view class="total-divider"></view>
+    <view class="total-item">
+      <text class="total-value">{{totalsView.kwh}}</text>
+      <text class="total-label">总充电量 kWh</text>
+    </view>
+    <view class="total-divider"></view>
+    <view class="total-item">
+      <text class="total-value">{{totalsView.count}}</text>
+      <text class="total-label">充电次数</text>
     </view>
   </view>
 

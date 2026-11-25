@@ -138,6 +138,18 @@ async function main() {
     assert.strictEqual(testMonth.costPerKm, 0.17, '统计页测试月成本应为 0.17')
     console.log('PASS 统计接口')
 
+    const yearStats = assertOk(
+      await callCloud(miniProgram, 'getStats', { year: 2000 }),
+      '年度统计'
+    )
+    assert.strictEqual(yearStats.year, '2000', '年度统计年份错误')
+    assert.strictEqual(yearStats.months.length, 12, '年度统计应返回 12 个月')
+    assert.ok(yearStats.availableYears.includes('2000'), 'availableYears 缺少 2000')
+    const testYearMonth = yearStats.months.find((item) => item.month === '2000-01')
+    assert.ok(testYearMonth, '年度统计缺少 2000-01')
+    assert.strictEqual(testYearMonth.consumption, 12.9, '年度统计 1 月电耗应为 12.9')
+    console.log('PASS 年度统计接口')
+
     // ---------- 表单真实提交 ----------
     const addPage = await miniProgram.navigateTo('/pages/add/index')
     await sleep(400)
