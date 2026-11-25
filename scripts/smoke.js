@@ -58,6 +58,33 @@ async function main() {
     await sleep(400)
     console.log('PASS 导出页')
 
+    const calendarPage = await miniProgram.switchTab('/pages/calendar/index')
+    await sleep(1400)
+    assert.strictEqual(normalize(calendarPage.path), 'pages/calendar/index', '日历 tab 未切换')
+    const calendarData = await calendarPage.data()
+    assert.ok(calendarData.monthLabel, '日历月份标题未渲染')
+    assert.strictEqual(calendarData.days.length, 42, '日历应为 42 格')
+    assert.ok(!calendarData.error, `日历加载报错: ${calendarData.error}`)
+    const calendarShot = '/tmp/mywxapp-calendar.png'
+    await miniProgram.screenshot({ path: calendarShot })
+    console.log('SCREENSHOT', calendarShot)
+    console.log('PASS 日历 tab')
+
+    const selectedDay = await miniProgram.evaluate(function () {
+      const page = getCurrentPages().slice(-1)[0]
+      const day = (page.data.days || []).find((item) => item.inMonth && item.hasRecord)
+      if (!day) return null
+      page.onDayTap({ currentTarget: { dataset: { date: day.date, inMonth: 1 } } })
+      return { date: day.date, count: page.data.selectedRecords.length }
+    })
+    if (selectedDay) {
+      assert.ok(selectedDay.count > 0, '日历选中日期没有记录')
+      console.log('PASS 日历选中日期', selectedDay.date)
+      const calendarDayShot = '/tmp/mywxapp-calendar-day.png'
+      await miniProgram.screenshot({ path: calendarDayShot })
+      console.log('SCREENSHOT', calendarDayShot)
+    }
+
     const statsPage = await miniProgram.switchTab('/pages/stats/index')
     await sleep(1000)
     assert.strictEqual(normalize(statsPage.path), 'pages/stats/index', '统计 tab 未切换')

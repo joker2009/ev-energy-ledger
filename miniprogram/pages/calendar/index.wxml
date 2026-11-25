@@ -1,0 +1,104 @@
+<view class="page">
+  <view class="month-bar">
+    <view class="month-nav" bindtap="onPrevMonth" aria-role="button" aria-label="上个月">‹</view>
+    <picker
+      mode="date"
+      fields="month"
+      value="{{monthValue}}"
+      end="{{maxMonth}}"
+      bindchange="onMonthChange"
+    >
+      <view class="month-label">{{monthLabel}}</view>
+    </picker>
+    <view
+      class="month-nav {{isCurrentMonth ? 'is-disabled' : ''}}"
+      bindtap="onNextMonth"
+      aria-role="button"
+      aria-label="下个月"
+    >›</view>
+  </view>
+
+  <view class="summary-card">
+    <view class="summary-item">
+      <text class="summary-value">{{summary.count}}</text>
+      <text class="summary-label">充电次数</text>
+    </view>
+    <view class="summary-divider"></view>
+    <view class="summary-item">
+      <text class="summary-value">{{summary.kwh}}</text>
+      <text class="summary-label">充电量 kWh</text>
+    </view>
+    <view class="summary-divider"></view>
+    <view class="summary-item">
+      <text class="summary-value">{{summary.fee}}</text>
+      <text class="summary-label">本月花费</text>
+    </view>
+  </view>
+
+  <view class="state" wx:if="{{loading}}">加载中…</view>
+
+  <view class="state" wx:elif="{{error}}">
+    <view class="state-title">加载失败</view>
+    <view class="state-desc">{{error}}</view>
+    <button class="primary-btn state-btn" bindtap="load">重试</button>
+  </view>
+
+  <block wx:else>
+    <view class="weekday-row">
+      <text class="weekday" wx:for="{{weekdays}}" wx:key="*this">{{item}}</text>
+    </view>
+
+    <view class="calendar-grid">
+      <view
+        wx:for="{{days}}"
+        wx:key="date"
+        class="day-cell {{item.inMonth ? '' : 'is-outside'}} {{item.isToday ? 'is-today' : ''}} {{item.date === selectedDate ? 'is-selected' : ''}}"
+        data-date="{{item.date}}"
+        data-in-month="{{item.inMonth ? 1 : 0}}"
+        bindtap="onDayTap"
+      >
+        <view class="day-number">{{item.day}}</view>
+        <view class="day-dot" wx:if="{{item.hasRecord}}"></view>
+      </view>
+    </view>
+
+    <view class="day-section">
+      <view class="day-head">
+        <text class="day-title">{{selectedDateLabel}}</text>
+        <text class="day-summary" wx:if="{{selectedSummary.count}}">
+          {{selectedSummary.count}} 次 · {{selectedSummary.kwh}} kWh · {{selectedSummary.fee}}
+        </text>
+      </view>
+
+      <view class="day-empty" wx:if="{{selectedRecords.length === 0}}">
+        这天没有充电记录
+      </view>
+
+      <view class="day-records" wx:else>
+        <view
+          class="record-card"
+          wx:for="{{selectedRecords}}"
+          wx:key="_id"
+          data-id="{{item._id}}"
+          bindtap="onRecordTap"
+        >
+          <view class="record-main">
+            <view class="record-left">
+              <text class="type-tag type-{{item.typeClass}}">{{item.typeLabel}}</text>
+              <text class="record-kwh">{{item.kwhText}}</text>
+            </view>
+            <view class="record-right">
+              <text class="record-fee">{{item.feeText}}</text>
+              <text class="record-arrow">›</text>
+            </view>
+          </view>
+          <view class="record-sub">{{item.odoText}} · {{item.segmentText}}</view>
+          <view class="record-metrics" wx:if="{{item.consumptionText || item.costText}}">
+            <text wx:if="{{item.consumptionText}}">{{item.consumptionText}}</text>
+            <text wx:if="{{item.costText}}">{{item.costText}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

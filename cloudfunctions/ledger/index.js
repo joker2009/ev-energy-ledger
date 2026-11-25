@@ -327,7 +327,7 @@ function normalizeRecord(payload) {
     if (socEnd <= socStart) badRequest('结束电量需大于起始电量')
   }
 
-  const note = String(payload.note || '').slice(0, 100)
+  const note = String(payload.note || '').slice(0, 300)
 
   return {
     date,
@@ -705,7 +705,7 @@ async function importRecords(openid, payload) {
 
     const note = header.columns.note === undefined
       ? ''
-      : String(row[header.columns.note] || '').trim().slice(0, 100)
+      : String(row[header.columns.note] || '').trim().slice(0, 300)
     const rawOdometerType = header.columns.odometerType === undefined
       ? ''
       : String(row[header.columns.odometerType] || '')
@@ -888,6 +888,9 @@ async function recognizeChargeOrder(openid, payload) {
   for (const buffer of inputs) {
     if (!buffer || buffer.length === 0) badRequest('图片为空')
     if (buffer.length > 6 * 1024 * 1024) badRequest('单张图片超过 6MB 限制')
+    if (detectImageMime(buffer) === 'image/heic') {
+      badRequest('图片格式不支持（HEIC），请重新选择 JPG/PNG 截图')
+    }
   }
 
   const baseUrl = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/+$/, '')

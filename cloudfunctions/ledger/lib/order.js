@@ -1,4 +1,9 @@
-const ORDER_PROMPT = `你是充电订单信息提取助手。请从用户提供的充电订单截图中提取字段，只输出一个 JSON 对象，不要输出解释、Markdown 或任何额外文字。
+const ORDER_PROMPT = `你是充电记录信息提取助手。用户会提供 1-3 张图片，顺序不固定，可能包括：
+A. 车辆仪表盘/中控屏照片：可能显示「总里程」「ODO」和 km，可能没有 SOC。
+B. 充电订单截图：显示充电站、计费电量、充电时长、总费用、优惠券、实付款等。
+C. 车辆消息/充电提醒列表：包含多条「开始充电提醒」「结束充电提醒」，每条有日期时间和当前电量百分比。
+
+请先判断每张图片类型，再综合提取。只输出一个 JSON 对象，不要输出解释、Markdown 或任何额外文字。
 
 JSON 结构：
 {
@@ -11,23 +16,22 @@ JSON 结构：
   "socEnd": 数字或 null,
   "chargeType": "home" | "fast" | "swap" | "none" 或 null,
   "station": "充电站名称或 null",
-  "note": "充电时长、站点补充等非金额备注，或 null"
+  "note": "关键备注，最多300字或 null"
 }
 
 规则：
-- 用户可能一次上传 1-3 张图片，顺序不固定，可能包括：充电开始界面（起始 SOC，可能带总里程）、充电结束界面（结束 SOC，可能带总里程）、充电订单截图（电量/实付金额/站点/时间）。请根据图片内容判断类型并综合提取。
-- socStart 取开始界面的起始/充电前电量；socEnd 取结束界面的结束/充电后电量；只有一个订单截图时 SOC 返回 null。
-- odometer 取开始或结束界面的总里程/ODO；两张都有时优先开始界面，开始没有则用结束界面；订单截图没有里程时返回 null。
-- chargeKwh / chargeFee / date / time / station / chargeType 取充电订单截图。
-- 只提取与本次充电订单直接相关的数据。
+- odometer：从仪表盘/中控照片提取「总里程」或「ODO」后的 km 数字；忽略速度、温度、播放器、功率、档位等数字。
+- chargeKwh：从订单截图提取「计费电量」「充电量」「度数」，单位 kWh。
+- chargeFee：必须取实付金额，优先「实付款」「实际支付」；有优惠券、折扣、红包、退款时取抵扣后的实付，不要取「总费用」原价、电费+服务费合计、预付金额或退款金额；没有实付信息时才取总费用。
+- station / chargeType：从订单截图提取站点；超充/快充/直流→fast，家充/家用→home，换电→swap，无法判断→null。
+- socStart / socEnd（重要）：
+  1. 从车辆消息/充电提醒列表中找到与订单匹配的那次充电。用订单上的「充电时长」和日期时间匹配：选择开始/结束时间差与订单时长最接近的一组「开始充电提醒 + 结束充电提醒」。
+  2. 如果列表中有暂停/重启（例如结束在某个电量后又重新开始），只取与订单时长匹配的那一段的开始 SOC 和结束 SOC，不要用更早或更晚的其他会话。
+  3. 没有订单时长时，取最近一次完成的充电会话。
+  4. 找不到明确的开始/结束提醒则 null。
+- date / time：取匹配到的充电会话的开始日期和时间；如果只有订单上的时间则用订单；没有明确年月日时 null，不要用手机状态栏时间或当前日期猜测。
+- note：用不超过 300 字保留关键信息：充电时长、总费用、优惠券/折扣、实付款、匹配到的 SOC 区间（如 51%→100%）；站点单独放 station，不要重复；不要写订单号、手机号、账号、支付方式、车牌。
 - 不要输出订单号、手机号、账号、支付方式、车牌号等隐私信息。
-- 电量单位 kWh（截图中“度”按 kWh 处理），金额单位元。
-- 金额规则（非常重要）：chargeFee 必须取用户实际支付的金额，优先「实付款」「实际支付」「实付金额」「支付金额」；如果订单有优惠券、折扣、红包、余额抵扣、退款，必须使用抵扣后的实付金额。不要取「电费+服务费」的原价合计、优惠前总费用、预付款或退款金额；如果图片只显示总费用且没有实付/优惠信息，才取总费用。
-- note 只保留充电时长、停车/占位费等非金额补充；不要包含预付款、退款、优惠券、电费/服务费拆分等金额信息。
-- 充电前/后电量只取 0-100 的百分比整数。
-- 充电类型：家用/家充/慢充→home；快充/超充/直流/公共充电→fast；换电→swap；无法判断→null。
-- 如果截图中没有明确的年月日，date 必须为 null，不要用手机状态栏时间或当前日期猜测。
-- 总里程只提取明确的 ODO/总里程数字，没有则 null。
 - 不确定的字段一律 null，不要猜测。`
 
 function toNumber(value) {
@@ -112,7 +116,7 @@ function normalizeOrderFields(raw, today) {
   const station = String(raw.station || '').trim().slice(0, 60)
   if (station) fields.station = station
 
-  const note = String(raw.note || '').trim().slice(0, 100)
+  const note = String(raw.note || '').trim().slice(0, 300)
   if (note) fields.note = note
 
   return fields
@@ -129,6 +133,12 @@ function detectImageMime(buffer) {
     buffer.slice(8, 12).toString() === 'WEBP'
   ) {
     return 'image/webp'
+  }
+  if (buffer.length >= 12 && buffer.slice(4, 8).toString() === 'ftyp') {
+    const brand = buffer.slice(8, 12).toString()
+    if (['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1'].includes(brand)) {
+      return 'image/heic'
+    }
   }
   return 'image/jpeg'
 }

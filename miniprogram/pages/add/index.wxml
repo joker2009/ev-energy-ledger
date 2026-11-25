@@ -160,8 +160,8 @@
       <t-textarea
         label="备注"
         value="{{form.note}}"
-        placeholder="选填，最多 100 字"
-        maxlength="100"
+        placeholder="选填，最多 300 字"
+        maxlength="300"
         indicator
         borderless
         bindchange="onNoteChange"

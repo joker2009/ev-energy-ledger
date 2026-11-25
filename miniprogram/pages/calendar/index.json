@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "充电日历",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
+}

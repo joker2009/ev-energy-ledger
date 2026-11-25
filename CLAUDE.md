@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 微信原生小程序：**新能源电车的能耗记录账本**（记录充电、里程、花费，统计百公里电耗与每公里成本）。
 
-当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别）已完成**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**订单识别已配置 `DEEPSEEK_API_KEY`，并用真实订单截图验证通过**；客户端已加图片压缩与完整错误弹窗。**云函数超时当前仍是 3s，真机大图必须在云开发控制台改为 60s**（`config.json` 的 timeout 不生效）。未配置时入口会提示并保留手动录入。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库已初始化并关联 GitHub `origin/main`。
+当前状态：**v1（R1–R5）与二期（历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别、充电日历）已完成**。AppID `wxf641bd4dfe019562`，云开发环境 `cloud1-d3g9916cz3b402499`；`ledger` 云函数已部署，`records` / `vehicles` 集合已创建。**订单识别已配置 `DEEPSEEK_API_KEY`，并用真实订单截图验证通过**；客户端已加图片压缩与完整错误弹窗。**云函数超时已设为 60s**（`config.json` 的 timeout 不生效，需在控制台设置）。未配置时入口会提示并保留手动录入。R6 真机适配与发布前检查待执行，清单见 `docs/v1-功能设计.md` §12。仓库已初始化并关联 GitHub `origin/main`。
 
 ## 目录结构
 
@@ -14,13 +14,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 project.config.json        # miniprogramRoot=miniprogram/，cloudfunctionRoot=cloudfunctions/
 miniprogram/               # 小程序源码（构建产物不在此目录）
   app.js                   # 云开发初始化留到 R3
-  app.json                 # 页面注册、tabBar（记录 / 统计）
+  app.json                 # 页面注册、tabBar（记录 / 日历 / 统计）
   app.wxss                 # 全局设计变量与通用样式
   sitemap.json             # 全站 disallow，账本数据不参与索引
   package.json             # 小程序运行时依赖（TDesign）；npm 装在这里
   miniprogram_npm/         # build-npm 产物，勿手改
   node_modules/            # TDesign 等运行时依赖
   pages/list/index.*       # 记录首页：月份切换、月汇总、按日分组、点击编辑、左滑删除、FAB
+  pages/calendar/index.*   # 充电日历：月视图、充电日期标记、日明细、月汇总
   pages/stats/index.*      # 统计：指标卡 + 电耗/成本/花费构成三张图
   pages/import/index.*     # Excel 导入：选文件、默认类型、结果与错误行
   pages/export/index.*     # Excel 导出：全部/指定月份、打开保存、发送到聊天
@@ -105,12 +106,21 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
 - 返回 `{ fileID, count, fileName }`；`returnBase64` 用于测试。
 - 导入记录额外保存 `importBatch`；`deleteImportBatch` 可按批次删除，测试用它清理，未来也可做「撤销导入」。
 
+### 充电日历
+
+- tabBar 新增 `pages/calendar/index`（记录 / 日历 / 统计）。
+- 月视图 42 格（周一起），有记录的日期显示绿点；今天描边；选中日绿底；跨月日期灰色不可点。
+- 顶部月汇总：充电次数、充电量、本月花费；点日期展示当天记录与日汇总（次数/电量/花费）。
+- 数据直接来自 `listRecords(month)`，客户端按 `date` 分组；无新增云函数或存储。
+- `onShow`、切换月份、下拉刷新都会重新加载；当天记录卡片可点开编辑。
+
 ### 充电订单截图识别（DeepSeek 多模态）
 
-- 记一笔页顶部「识别充电订单截图」→ `wx.chooseMedia` 一次选 **1–3 张**（充电开始、充电结束、订单截图），压缩后上传云存储 → `ledger.recognizeChargeOrder({ fileIDs })`。
-- 云函数支持 `fileIDs` / `imagesBase64`（最多 3 张）或单个 `fileID` / `imageBase64`；每张图片作为 `image_url` 发送，提示词要求按内容区分开始/结束/订单并综合提取。
-- 字段：`socStart` / `socEnd` 取开始/结束界面；`odometer` 优先开始界面、否则结束界面；电量/实付金额/日期/站点/类型取订单截图。金额必须取实付（优惠券/折扣/退款后的金额），备注不包含金额明细；没有明确年月日时 `date` 为 null，不用状态栏时间猜测。
-- 客户回填表单，并保留最多 3 张本地截图缩略图（`wx.previewImage`）+ 识别字段清单，供人工核对；**不会自动保存**。
+- 记一笔页顶部「识别充电订单截图」→ `wx.chooseMedia` 一次选 **1–3 张**（可能是仪表盘里程、充电订单、车辆充电提醒列表，顺序不固定），压缩后上传云存储 → `ledger.recognizeChargeOrder({ fileIDs })`。
+- 云函数支持 `fileIDs` / `imagesBase64`（最多 3 张）或单个 `fileID` / `imageBase64`；每张图片作为 `image_url` 发送，提示词要求先判断图片类型再综合提取。
+- 字段：`date` / `time` / `socStart` / `socEnd` 取车辆提醒中**与订单充电时长匹配**的那次会话（列表可能有暂停/重启，不能取错更早或更晚的会话）；`odometer` 取仪表盘「总里程/ODO」；电量/实付金额/站点/类型取订单截图。金额必须取实付（优惠券/折扣/退款后），不取原价合计/预付/退款；没有明确年月日时 `date` 为 null。
+- 备注最多 **300 字**，保留充电时长、总费用、优惠券、实付款、匹配到的 SOC 区间等关键信息；站点单独放 `station`，不写订单号/手机号/账号/支付方式/车牌。
+- 客户端回填表单，展示最多 3 张本地截图缩略图（`wx.previewImage`）+ 识别字段清单；识别期间显示 `wx.showLoading` 遮罩；**不会自动保存**。
 - 截图里没有里程时留空，由用户手动填写。
 - 环境变量：`DEEPSEEK_API_KEY`（必填）、`DEEPSEEK_MODEL`（默认 `deepseek-flash`）、`DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`）；云函数超时必须为 **60s**（当前已配置，`config.json` 不会修改该值）。
 - 截图会发送给 DeepSeek；提示词明确不提取订单号/手机号/账号/支付方式/车牌，隐私指引需声明第三方 AI 处理与云存储临时文件。
@@ -124,7 +134,7 @@ package.json               # 根目录仅含 devDependencies（自动化 SDK）
 2. **列表**：月份切换 + 当月明细 + 月汇总（里程、电耗、花费）
 3. **统计**：百公里电耗趋势、每公里成本、家充 vs 快充花费占比
 
-二期已实现历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别。保养、行程记录、多车管理、分享、自动同步里程仍属 v2，不要提前实现。需求一多，生成代码会互相矛盾。
+二期已实现历史记录编辑、Excel 导入/导出、充电订单截图 AI 识别、充电日历。保养、行程记录、多车管理、分享、自动同步里程仍属 v2，不要提前实现。需求一多，生成代码会互相矛盾。
 
 ## 数据模型
 
@@ -198,7 +208,7 @@ npm run smoke:ai:multi # 三图识别：开始/结束/订单，校验 SOC/里程
 npm run prune:npm      # build-npm 后裁剪 TDesign 未使用组件（控制主包 <2MB）
 ```
 
-- `scripts/smoke.js` 校验编译、记录/统计 tab、「+」进入记一笔、表单默认值与校验；生成 `/tmp/mywxapp-list.png`、`/tmp/mywxapp-add.png`。
+- `scripts/smoke.js` 校验编译、记录/日历/统计 tab、「+」进入记一笔、表单默认值与校验；生成 `/tmp/mywxapp-list.png`、`/tmp/mywxapp-calendar.png`、`/tmp/mywxapp-add.png`。
 - `scripts/cloud-smoke.js` 需要 `ledger` 已部署：用 2000-01 的历史记录做隔离，验证本段里程/电耗/成本、月度汇总、统计接口，再走表单提交、列表渲染、编辑、左滑删除、图表初始化，并清理测试数据；生成统计页截图。
 - `scripts/import-smoke.js` 读取合成 xlsx 的 base64 调 `importRecords`，验证 3 条导入、字段映射、3 位小数、原始顺序、重复导入去重、导入后编辑，最后按导入批次清理。传自定义文件：`npm run smoke:import -- /path/to/file.xlsx`（仅本地使用，不要提交真实数据）。
 - `scripts/export-smoke.js` 导入合成样本后用 `exportRecords` 的 `returnBase64` 解析工作簿，校验全部/指定月份的标题、列、精度、时分与文件名，再验证云端上传、下载和清理，最后按批次删除测试数据。

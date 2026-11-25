@@ -49,11 +49,37 @@ const compressImage = (src) =>
     }
     wx.compressImage({
       src,
-      quality: 70,
+      quality: 90,
       success: (res) => resolve(res.tempFilePath || src),
       fail: () => resolve(src)
     })
   })
+
+const mergeOrderFields = (base, extra) => {
+  const merged = Object.assign({}, base)
+  const hasOrder = extra.chargeKwh !== undefined || extra.chargeFee !== undefined
+
+  Object.keys(extra || {}).forEach((key) => {
+    const value = extra[key]
+    if (value === undefined || value === null || value === '') return
+
+    if (key === 'note') {
+      if (hasOrder || !merged.note) merged.note = value
+      return
+    }
+
+    if (key === 'date' || key === 'time') {
+      if (extra.socStart !== undefined || !merged[key]) merged[key] = value
+      return
+    }
+
+    if (merged[key] === undefined || merged[key] === null || merged[key] === '') {
+      merged[key] = value
+    }
+  })
+
+  return merged
+}
 
 Page({
   data: {
@@ -245,6 +271,8 @@ Page({
     this.setData({ orderImages: uploadPaths })
     const uploadedFileIDs = []
 
+    wx.showLoading({ title: '识别中', mask: true })
+
     try {
       for (let index = 0; index < uploadPaths.length; index += 1) {
         const upload = await wx.cloud.uploadFile({
@@ -254,8 +282,33 @@ Page({
         uploadedFileIDs.push(upload.fileID)
       }
 
+      console.log('[recognizeChargeOrder] fileIDs', uploadedFileIDs)
+
       const result = await ledger.recognizeChargeOrder({ fileIDs: uploadedFileIDs })
-      const fields = result.fields || {}
+      let fields = result.fields || {}
+      console.log('[recognizeChargeOrder] multi result', result)
+
+      if (
+        uploadedFileIDs.length > 1 &&
+        (!fields.chargeKwh || fields.socStart === undefined || fields.odometer === undefined)
+      ) {
+        const partials = await Promise.all(
+          uploadedFileIDs.map((fileID) =>
+            ledger.recognizeChargeOrder({ fileID }).catch((err) => {
+              console.error('[recognizeChargeOrder] fallback failed', err)
+              return null
+            })
+          )
+        )
+
+        partials.forEach((partial) => {
+          if (partial && partial.fields) {
+            fields = mergeOrderFields(fields, partial.fields)
+          }
+        })
+        console.log('[recognizeChargeOrder] fallback fields', fields)
+      }
+
       const patch = {}
 
       if (fields.date) patch['form.date'] = fields.date
@@ -271,7 +324,7 @@ Page({
         if (fields.chargeType === 'none') patch['form.chargeKwh'] = ''
       }
 
-      const note = [fields.station, fields.note].filter(Boolean).join(' | ').slice(0, 100)
+      const note = [fields.station, fields.note].filter(Boolean).join(' | ').slice(0, 300)
       if (note) patch['form.note'] = note
 
       const summary = []
@@ -307,7 +360,11 @@ Page({
       const count = Object.keys(fields).filter((key) => key !== 'time').length
       if (!count) {
         this.setData({ recognizedSummary: summary })
-        wx.showToast({ title: '没识别到有效信息，请手动填写', icon: 'none' })
+        wx.showModal({
+          title: '未识别到字段',
+          content: '请确认图片清晰，且包含充电开始/结束提醒和订单截图；也可以先只上传订单截图重试。',
+          showCancel: false
+        })
         return
       }
 
@@ -323,6 +380,7 @@ Page({
         showCancel: false
       })
     } finally {
+      wx.hideLoading()
       this.setData({ recognizing: false })
       if (uploadedFileIDs.length) {
         wx.cloud.deleteFile({ fileList: uploadedFileIDs }).catch(() => {})

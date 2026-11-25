@@ -55,7 +55,7 @@ async function main() {
       assert.ok(Math.abs(Number(fields.chargeFee) - 30.5) < 0.05, '金额应取实付 30.50')
       assert.strictEqual(fields.chargeType, 'fast', '充电类型识别错误')
       assert.ok(String(fields.station || '').includes('测试充电站'), '站点识别错误')
-      assert.ok(!/预付|退款|优惠券|服务费/.test(fields.note || ''), '备注不应包含金额明细')
+      assert.ok(String(fields.note || '').length <= 300, '备注超过 300 字')
       console.log('AI MULTI SMOKE PASSED')
     } else if (/未配置|DEEPSEEK_API_KEY/i.test(result.message || '')) {
       console.log('AI MULTI SKIPPED: 云函数尚未配置 DEEPSEEK_API_KEY')

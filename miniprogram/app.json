@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/list/index",
+    "pages/calendar/index",
     "pages/stats/index",
     "pages/add/index",
     "pages/import/index",
@@ -22,6 +23,10 @@
       {
         "pagePath": "pages/list/index",
         "text": "记录"
+      },
+      {
+        "pagePath": "pages/calendar/index",
+        "text": "日历"
       },
       {
         "pagePath": "pages/stats/index",
